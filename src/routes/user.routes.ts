@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { LogIn, LogOut, SignIn, UpdateProfile } from "../controllers/auth.controller";
 import { protectRoute } from "../middleware/auth.middelware";
-import { upload, uploadImage } from '../controllers/upload.controller';
+import { upload } from '../controllers/upload.controller';
 const router = Router();
 
 router.post("/signin",upload.single("pfp"), SignIn);
