@@ -1,20 +1,12 @@
-import { Server } from "socket.io";
-import {server} from "../app"
 import { Router } from "express";
+import { sendMessage, getMessages } from "../controllers/chat.controller";
 
 const router = Router();
 
-const io = new Server(server, {
-  // options
-});
+// POST /api/chat/message - Send a message
+router.post("/message", sendMessage);
 
-io.on("connection", (socket) => {
-  // ...
-
-});
-
-
-
-
+// GET /api/chat/messages - Get messages between two users
+router.get("/messages", getMessages);
 
 export default router;

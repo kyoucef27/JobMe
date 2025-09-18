@@ -1,25 +1,306 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Socket.IO chat</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App - Test Interface</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-
-      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
-      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
-      #input:focus { outline: none; }
-      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
-
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages > li { padding: 0.5rem 1rem; }
-      #messages > li:nth-child(odd) { background: #efefef; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .user-setup {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .user-setup input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .user-setup button {
+            padding: 8px 15px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .user-setup button:hover {
+            background: #1976d2;
+        }
+        .chat-area {
+            display: none;
+        }
+        .messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fafafa;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 5px;
+            max-width: 70%;
+        }
+        .message.sent {
+            background: #e3f2fd;
+            margin-left: auto;
+            text-align: right;
+        }
+        .message.received {
+            background: #f3e5f5;
+        }
+        .message-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .message-content {
+            font-size: 14px;
+        }
+        .message-input {
+            display: flex;
+            gap: 10px;
+        }
+        .message-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .message-input button {
+            padding: 10px 20px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .message-input button:hover {
+            background: #45a049;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .online-users {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
     </style>
-  </head>
-  <body>
-    <ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
-  </body>
+</head>
+<body>
+    <div class="container">
+        <h1>Chat App - Test Interface</h1>
+        
+        <!-- User Setup -->
+        <div class="user-setup">
+            <h3>Connect to Chat</h3>
+            <input type="text" id="currentUserId" placeholder="Your User ID (MongoDB _id)" />
+            <input type="text" id="targetUserId" placeholder="Target User ID (to chat with)" />
+            <button onclick="connectToChat()">Connect</button>
+            <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                💡 Use MongoDB ObjectId format like: 507f1f77bcf86cd799439011
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="status disconnected">Disconnected</div>
+        <div id="onlineUsers" class="online-users" style="display: none;"></div>
+
+        <!-- Chat Area -->
+        <div id="chatArea" class="chat-area">
+            <h3>Chat Messages</h3>
+            <div id="messages" class="messages"></div>
+            <div class="message-input">
+                <input type="text" id="messageInput" placeholder="Type your message..." />
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentUserId = null;
+        let targetUserId = null;
+
+        function connectToChat() {
+            currentUserId = document.getElementById('currentUserId').value.trim();
+            targetUserId = document.getElementById('targetUserId').value.trim();
+
+            if (!currentUserId || !targetUserId) {
+                alert('Please enter both user IDs');
+                return;
+            }
+
+            // Connect to Socket.IO with userId
+            socket = io('http://localhost:3000', {
+                query: { userId: currentUserId }
+            });
+
+            socket.on('connect', () => {
+                document.getElementById('status').textContent = `Connected as ${currentUserId}`;
+                document.getElementById('status').className = 'status connected';
+                document.getElementById('chatArea').style.display = 'block';
+                addSystemMessage(`Connected as ${currentUserId}`);
+            });
+
+            socket.on('disconnect', () => {
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('status').className = 'status disconnected';
+                addSystemMessage('Disconnected from server');
+            });
+
+            // Listen for new messages
+            socket.on('newMessage', (message) => {
+                addMessage(message, 'received');
+            });
+
+            // Listen for user online/offline status
+            socket.on('userOnline', (userId) => {
+                addSystemMessage(`User ${userId} came online`);
+                updateOnlineUsers();
+            });
+
+            socket.on('userOffline', (userId) => {
+                addSystemMessage(`User ${userId} went offline`);
+                updateOnlineUsers();
+            });
+
+            // Listen for typing indicators
+            socket.on('userTyping', ({ from }) => {
+                if (from === targetUserId) {
+                    addSystemMessage(`${from} is typing...`);
+                }
+            });
+
+            socket.on('userStoppedTyping', ({ from }) => {
+                if (from === targetUserId) {
+                    addSystemMessage(`${from} stopped typing`);
+                }
+            });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const content = messageInput.value.trim();
+
+            if (!content || !socket) {
+                return;
+            }
+
+            // Send message via HTTP API
+            fetch('http://localhost:3000/api/chat/message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    from: currentUserId,
+                    to: targetUserId,
+                    content: content
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Message sent successfully') {
+                    addMessage(data.data, 'sent');
+                    messageInput.value = '';
+                } else {
+                    alert('Failed to send message: ' + JSON.stringify(data));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to send message');
+            });
+        }
+
+        function addMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const time = new Date(message.createdAt).toLocaleTimeString();
+            messageDiv.innerHTML = `
+                <div class="message-info">${type === 'sent' ? 'You' : message.from} - ${time}</div>
+                <div class="message-content">${message.content}</div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function addSystemMessage(text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = 'text-align: center; color: #666; font-style: italic; margin: 5px 0;';
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateOnlineUsers() {
+            // This is optional - you could implement an API to get online users
+            const onlineDiv = document.getElementById('onlineUsers');
+            onlineDiv.style.display = 'block';
+            onlineDiv.innerHTML = '<strong>Online Status:</strong> Real-time updates enabled';
+        }
+
+        // Send message on Enter key
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+
+        // Optional: Typing indicators
+        let typingTimer;
+        document.addEventListener('DOMContentLoaded', () => {
+            const messageInput = document.getElementById('messageInput');
+            
+            messageInput.addEventListener('input', () => {
+                if (socket && targetUserId) {
+                    socket.emit('typing', { to: targetUserId, from: currentUserId });
+                    
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => {
+                        socket.emit('stopTyping', { to: targetUserId, from: currentUserId });
+                    }, 1000);
+                }
+            });
+        });
+    </script>
+</body>
 </html>

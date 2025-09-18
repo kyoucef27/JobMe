@@ -110,7 +110,15 @@ export const LogIn = async (
 
     res.status(200).json({
       message: "User logged in successfully",
-      user,
+      user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      pfp: user.pfp,
+      lastOnline: user.lastOnline,
+      },
     });
   } catch (err) {
     next(err);
