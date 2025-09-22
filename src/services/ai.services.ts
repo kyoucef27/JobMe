@@ -1,6 +1,6 @@
 import groq from "../lib/groq";
 
-export async function AITEST(message:string) {
+export async function AICHATBOT(message:string) {
   const completion = await groq.chat.completions.create({
     model: "meta-llama/llama-4-maverick-17b-128e-instruct",
     messages: [

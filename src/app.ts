@@ -8,7 +8,6 @@ import uploadRoutes from './routes/upload.routes'
 import { createServer } from "http";
 import chatRoutes from './routes/chat.routes';
 import { initializeSocket } from './lib/socket';
-import { AITEST } from "./services/ai.services";
 const app = express();
 export const server = createServer(app);
 
@@ -35,7 +34,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/upload',uploadRoutes);
 app.use('/api/chat', chatRoutes);
 
-AITEST('I am a web dev what should be my experinces return 3 in json format');
 app.use(errorHandler);
 
 export default app

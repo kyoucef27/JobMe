@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { Message } from "../models/message.model";
+import { AIMessage } from "../models/aimessage.model";
 import { getSocketIO, getConnectedUsers } from "../lib/socket";
-
-export const sendMessage = async (
+import { AICHATBOT } from "../services/ai.services";
+export const sendMessageAI = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -18,7 +18,7 @@ export const sendMessage = async (
     }
       
     // Create and save the message
-    const message = new Message({
+    const message = new AIMessage({
       from,
       to,
       content
@@ -29,21 +29,28 @@ export const sendMessage = async (
     // Get Socket.IO instance and connected users
     const io = getSocketIO();
     const connectedUsers = getConnectedUsers();
+    const AIRESPONSE=AICHATBOT(savedMessage.content)
+
+    const aiMessage = new AIMessage({
+      from:savedMessage.to,
+      to:savedMessage.from,
+      content:AIRESPONSE
+    });
 
     // Check if the receiver is connected
-    const receiverSocketId = connectedUsers.get(to);
+    const receiverSocketId = connectedUsers.get(savedMessage.from);
 
     if (receiverSocketId) {
       // Emit message to the specific receiver
       io.to(receiverSocketId).emit("newMessage", {
-        _id: savedMessage._id,
-        from: savedMessage.from,
-        to: savedMessage.to,
-        content: savedMessage.content,
-        createdAt: savedMessage.createdAt,
-        read: savedMessage.read
+        _id: aiMessage._id,
+        from: aiMessage.from,
+        to: aiMessage.to,
+        content: aiMessage.content,
+        createdAt: aiMessage.createdAt,
       });
     }
+    
 
     // Return success response
     res.status(201).json({
@@ -53,8 +60,8 @@ export const sendMessage = async (
         from: savedMessage.from,
         to: savedMessage.to,
         content: savedMessage.content,
+        aireply: aiMessage.content,
         createdAt: savedMessage.createdAt,
-        read: savedMessage.read
       }
     });
 
@@ -64,7 +71,7 @@ export const sendMessage = async (
   }
 };
 
-export const getMessages = async (
+export const getMessagesAI = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -79,7 +86,7 @@ export const getMessages = async (
     }
 
     // Get messages between two users
-    const messages = await Message.find({
+    const messages = await AIMessage.find({
       $or: [
         { from: userId1, to: userId2 },
         { from: userId2, to: userId1 }
