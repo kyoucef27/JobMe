@@ -1,10 +1,10 @@
-import { Schema, model, Document } from "mongoose";
+// message.model.ts
+import { Schema, model, models, Document } from "mongoose";
 
 interface IMessage extends Document {
-  _id: Schema.Types.Mixed ;
-  from: string; 
-  to: string; 
-  content: string;  
+  from: string;
+  to: string;
+  content: string;
   createdAt: Date;
   read: boolean;
 }
@@ -19,4 +19,6 @@ const messageSchema = new Schema<IMessage>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-export const Message = model<IMessage>("Message", messageSchema);
+
+export const Message =
+  models.Message || model<IMessage>("Message", messageSchema);

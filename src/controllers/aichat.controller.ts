@@ -29,25 +29,25 @@ export const sendMessageAI = async (
     // Get Socket.IO instance and connected users
     const io = getSocketIO();
     const connectedUsers = getConnectedUsers();
-    const AIRESPONSE=AICHATBOT(savedMessage.content)
+    const AIRESPONSE = await AICHATBOT(savedMessage.content);
 
     const aiMessage = new AIMessage({
       from:savedMessage.to,
       to:savedMessage.from,
       content:AIRESPONSE
     });
-
+    const savedaiMessage = await aiMessage.save()
     // Check if the receiver is connected
     const receiverSocketId = connectedUsers.get(savedMessage.from);
 
     if (receiverSocketId) {
       // Emit message to the specific receiver
       io.to(receiverSocketId).emit("newMessage", {
-        _id: aiMessage._id,
-        from: aiMessage.from,
-        to: aiMessage.to,
-        content: aiMessage.content,
-        createdAt: aiMessage.createdAt,
+        _id: savedaiMessage._id,
+        from: savedaiMessage.from,
+        to: savedaiMessage.to,
+        content: savedaiMessage.content,
+        createdAt: savedaiMessage.createdAt,
       });
     }
     
@@ -60,7 +60,7 @@ export const sendMessageAI = async (
         from: savedMessage.from,
         to: savedMessage.to,
         content: savedMessage.content,
-        aireply: aiMessage.content,
+        aireply: savedaiMessage.content,
         createdAt: savedMessage.createdAt,
       }
     });

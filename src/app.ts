@@ -10,7 +10,7 @@ import chatRoutes from './routes/chat.routes';
 import { initializeSocket } from './lib/socket';
 const app = express();
 export const server = createServer(app);
-
+import aichatroutes from './routes/ai.routes'
 // Initialize Socket.IO
 initializeSocket(server);
 
@@ -33,7 +33,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/upload',uploadRoutes);
 app.use('/api/chat', chatRoutes);
-
+app.use('/api/chatbot',aichatroutes)
 app.use(errorHandler);
 
 export default app

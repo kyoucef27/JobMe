@@ -9,10 +9,7 @@ export async function AICHATBOT(message:string) {
         content: message,
       },
     ],
-    response_format: {
-    type: 'json_object'
-  },
     n:1,
   });
-  console.log(completion.choices[0]?.message?.content);
+  return(completion.choices[0]?.message?.content);
 }

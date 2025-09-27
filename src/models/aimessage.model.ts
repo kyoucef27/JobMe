@@ -1,14 +1,14 @@
-import { Schema, model, Document } from "mongoose";
+// aiMessage.model.ts
+import { Schema, model, models, Document } from "mongoose";
 
-interface IMessage extends Document {
-  _id: Schema.Types.Mixed ;
-  from: string; 
-  to: string; 
-  content: string;  
+interface IAIMessage extends Document {
+  from: string;
+  to: string;
+  content: string;
   createdAt: Date;
 }
 
-const messageSchema = new Schema<IMessage>(
+const aiMessageSchema = new Schema<IAIMessage>(
   {
     from: { type: String, required: true },
     to: { type: String, required: true },
@@ -17,4 +17,5 @@ const messageSchema = new Schema<IMessage>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-export const AIMessage = model<IMessage>("Message", messageSchema);
+export const AIMessage =
+  models.AIMessage || model<IAIMessage>("AIMessage", aiMessageSchema);

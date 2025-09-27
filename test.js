@@ -1,5 +1,4 @@
-
-        let socket = null;
+let socket = null;
         let currentUserId = null;
         let targetUserId = null;
 
@@ -18,16 +17,16 @@
             });
 
             socket.on('connect', () => {
-                document.getElementById('status').textContent = `Connected as ${currentUserId}`;
+                document.getElementById('status').textContent = `🟢 Connected as ${currentUserId}`;
                 document.getElementById('status').className = 'status connected';
                 document.getElementById('chatArea').style.display = 'block';
-                addSystemMessage(`Connected as ${currentUserId}`);
+                addSystemMessage(`✅ Connected as ${currentUserId}`);
             });
 
             socket.on('disconnect', () => {
-                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('status').textContent = '🔴 Disconnected';
                 document.getElementById('status').className = 'status disconnected';
-                addSystemMessage('Disconnected from server');
+                addSystemMessage('❌ Disconnected from server');
             });
 
             // Listen for new messages
@@ -37,19 +36,19 @@
 
             // Listen for user online/offline status
             socket.on('userOnline', (userId) => {
-                addSystemMessage(`User ${userId} came online`);
+                addSystemMessage(`🟢 User ${userId} came online`);
                 updateOnlineUsers();
             });
 
             socket.on('userOffline', (userId) => {
-                addSystemMessage(`User ${userId} went offline`);
+                addSystemMessage(`🔴 User ${userId} went offline`);
                 updateOnlineUsers();
             });
 
             // Listen for typing indicators
             socket.on('userTyping', ({ from }) => {
                 if (from === targetUserId) {
-                    addSystemMessage(`${from} is typing...`);
+                    addSystemMessage(`⌨️ ${from} is typing...`);
                 }
             });
 
@@ -67,9 +66,17 @@
             if (!content || !socket) {
                 return;
             }
-
+            const userMessage = {
+            _id: Date.now(), // temporary ID
+            from: currentUserId,
+            to: targetUserId,
+            content: content,
+            createdAt: new Date().toISOString()
+                };
+                addMessage(userMessage, 'sent');
+                messageInput.value = '';
             // Send message via HTTP API
-            fetch('http://localhost:3000/api/chat/message', {
+            fetch('http://localhost:3000/api/chatbot/message', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -83,8 +90,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.message === 'Message sent successfully') {
-                    addMessage(data.data, 'sent');
-                    messageInput.value = '';
+                    console.log('Message sent successfully');
                 } else {
                     alert('Failed to send message: ' + JSON.stringify(data));
                 }
@@ -95,15 +101,22 @@
             });
         }
 
+        // Function to format text with bold for *text*
+        function formatMessage(text) {
+            return text.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+        }
+
         function addMessage(message, type) {
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             
             const time = new Date(message.createdAt).toLocaleTimeString();
+            const formattedContent = formatMessage(message.content);
+            
             messageDiv.innerHTML = `
-                <div class="message-info">${type === 'sent' ? 'You' : message.from} - ${time}</div>
-                <div class="message-content">${message.content}</div>
+                <div class="message-info">${type === 'sent' ? '👤 You' : '🤖 AI Bot'} - ${time}</div>
+                <div class="message-content">${formattedContent}</div>
             `;
             
             messagesDiv.appendChild(messageDiv);
@@ -113,7 +126,7 @@
         function addSystemMessage(text) {
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
-            messageDiv.style.cssText = 'text-align: center; color: #666; font-style: italic; margin: 5px 0;';
+            messageDiv.className = 'system-message';
             messageDiv.textContent = text;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -123,7 +136,7 @@
             // This is optional - you could implement an API to get online users
             const onlineDiv = document.getElementById('onlineUsers');
             onlineDiv.style.display = 'block';
-            onlineDiv.innerHTML = '<strong>Online Status:</strong> Real-time updates enabled';
+            onlineDiv.innerHTML = '<strong>🟢 Online Status:</strong> Real-time updates enabled';
         }
 
         // Send message on Enter key
