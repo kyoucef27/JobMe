@@ -7,6 +7,5 @@ const router = Router();
 router.post("/signin",upload.single("pfp"), SignIn);
 router.post("/login", LogIn);
 router.post("/logout", LogOut);
-
 router.put("/update-profile", protectRoute,upload.single("pfp"),UpdateProfile)
 export default router;

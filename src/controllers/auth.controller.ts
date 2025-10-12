@@ -1,15 +1,15 @@
 import { Request, Response, NextFunction, response } from "express";
-import { IUser, User } from "../models/user.model";
+import {  User } from "../models/user.model";
 import bcrypt from "bcrypt";
 import { generateToken } from "../lib/utils";
 import cloudinary from "../lib/cloudinary";
 import { userimg } from "../models/user.model";
+import { sendOTP } from "../lib/otp";
 export const SignIn = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  
   try {
     let metadata;
     try {
@@ -62,27 +62,45 @@ export const SignIn = async (
       }
     }
 
-    const newuser: IUser = new User({
+  
+    try {
+      await sendOTP("kefifyoucef2020@gmail.com");
+    } catch (otpError) {
+      console.error("OTP sending failed:", otpError);
+      return res.status(500).json({ message: "Failed to send OTP verification email" });
+    }
+    
+    
+    const pendingUser = {
       name,
       email,
       phone,
       bday,
       password: hashedPassword,
       address,
-      pfp,
+      pfp
+    };
+    
+    
+    res.cookie('pendingRegistration', JSON.stringify(pendingUser), { 
+      httpOnly: true,
+      maxAge: 10 * 60 * 1000, 
+      secure: process.env.NODE_ENV === 'production'
     });
-    if (newuser) {
-      await newuser.save();
-      generateToken(newuser._id.toString(), res);
-      res.status(201).json({
-        message: "User registered successfully",
-        user: newuser,
-      });
-    }
+    
+    
+    res.status(200).json({
+      message: "OTP verification required",
+      email: email,
+      redirect: "/verify-otp"
+    });
+    
+    
   } catch (error) {
     next(error);
   }
 };
+
 
 export const LogIn = async (
   req: Request,

@@ -10,14 +10,13 @@ export const sendMessageAI = async (
   try {
     const { from, to, content } = req.body;
 
-    // Validate required fields
+    
     if (!from || !to || !content) {
       return res.status(400).json({
         error: "Missing required fields: from, to, content"
       });
     }
       
-    // Create and save the message
     const message = new AIMessage({
       from,
       to,
@@ -26,7 +25,6 @@ export const sendMessageAI = async (
 
     const savedMessage = await message.save();
 
-    // Get Socket.IO instance and connected users
     const io = getSocketIO();
     const connectedUsers = getConnectedUsers();
     const AIRESPONSE = await AICHATBOT(savedMessage.content);
@@ -37,11 +35,11 @@ export const sendMessageAI = async (
       content:AIRESPONSE
     });
     const savedaiMessage = await aiMessage.save()
-    // Check if the receiver is connected
+
     const receiverSocketId = connectedUsers.get(savedMessage.from);
 
     if (receiverSocketId) {
-      // Emit message to the specific receiver
+
       io.to(receiverSocketId).emit("newMessage", {
         _id: savedaiMessage._id,
         from: savedaiMessage.from,
@@ -52,7 +50,7 @@ export const sendMessageAI = async (
     }
     
 
-    // Return success response
+
     res.status(201).json({
       message: "Message sent successfully",
       data: {
@@ -85,7 +83,7 @@ export const getMessagesAI = async (
       });
     }
 
-    // Get messages between two users
+
     const messages = await AIMessage.find({
       $or: [
         { from: userId1, to: userId2 },

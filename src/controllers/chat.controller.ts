@@ -10,14 +10,13 @@ export const sendMessage = async (
   try {
     const { from, to, content } = req.body;
 
-    // Validate required fields
     if (!from || !to || !content) {
       return res.status(400).json({
         error: "Missing required fields: from, to, content"
       });
     }
       
-    // Create and save the message
+
     const message = new Message({
       from,
       to,
@@ -26,15 +25,15 @@ export const sendMessage = async (
 
     const savedMessage = await message.save();
 
-    // Get Socket.IO instance and connected users
+
     const io = getSocketIO();
     const connectedUsers = getConnectedUsers();
 
-    // Check if the receiver is connected
+
     const receiverSocketId = connectedUsers.get(to);
 
     if (receiverSocketId) {
-      // Emit message to the specific receiver
+
       io.to(receiverSocketId).emit("newMessage", {
         _id: savedMessage._id,
         from: savedMessage.from,
@@ -45,7 +44,7 @@ export const sendMessage = async (
       });
     }
 
-    // Return success response
+
     res.status(201).json({
       message: "Message sent successfully",
       data: {
@@ -78,7 +77,7 @@ export const getMessages = async (
       });
     }
 
-    // Get messages between two users
+
     const messages = await Message.find({
       $or: [
         { from: userId1, to: userId2 },

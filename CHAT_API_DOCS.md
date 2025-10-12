@@ -52,7 +52,7 @@
 
 #### Client Connection
 ```javascript
-// Connect with userId in query params
+
 const socket = io('http://localhost:3000', {
   query: { userId: 'user123' }
 });

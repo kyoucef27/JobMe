@@ -1,4 +1,4 @@
-// In your router file (e.g., routes/upload.routes.ts)
+
 import { Router } from 'express';
 import { upload, uploadImage } from '../controllers/upload.controller';
 

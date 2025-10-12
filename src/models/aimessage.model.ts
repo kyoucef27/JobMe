@@ -1,4 +1,4 @@
-// aiMessage.model.ts
+
 import { Schema, model, models, Document } from "mongoose";
 
 interface IAIMessage extends Document {

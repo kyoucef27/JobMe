@@ -8,7 +8,6 @@ export const errorHandler = async (
   _next: NextFunction
 ) => {
   if (err instanceof multer.MulterError) {
-    // Size limit, wrong field, too many files, etc.
     const map: Record<string, string> = {
       LIMIT_FILE_SIZE: "File too large",
       LIMIT_FILE_COUNT: "Too many files",

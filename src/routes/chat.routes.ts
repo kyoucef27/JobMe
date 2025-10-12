@@ -4,10 +4,9 @@ import { protectRoute } from "../middleware/auth.middelware";
 
 const router = Router();
 
-// POST /api/chat/message - Send a message
+
 router.post("/message", sendMessage);
 
-// GET /api/chat/messages - Get messages between two users
 router.get("/messages", getMessages);
 
 export default router;

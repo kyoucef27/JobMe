@@ -11,7 +11,7 @@ let socket = null;
                 return;
             }
 
-            // Connect to Socket.IO with userId
+
             socket = io('http://localhost:3000', {
                 query: { userId: currentUserId }
             });
@@ -29,12 +29,10 @@ let socket = null;
                 addSystemMessage('❌ Disconnected from server');
             });
 
-            // Listen for new messages
             socket.on('newMessage', (message) => {
                 addMessage(message, 'received');
             });
 
-            // Listen for user online/offline status
             socket.on('userOnline', (userId) => {
                 addSystemMessage(`🟢 User ${userId} came online`);
                 updateOnlineUsers();
@@ -45,7 +43,7 @@ let socket = null;
                 updateOnlineUsers();
             });
 
-            // Listen for typing indicators
+
             socket.on('userTyping', ({ from }) => {
                 if (from === targetUserId) {
                     addSystemMessage(`⌨️ ${from} is typing...`);
@@ -67,7 +65,7 @@ let socket = null;
                 return;
             }
             const userMessage = {
-            _id: Date.now(), // temporary ID
+            _id: Date.now(),
             from: currentUserId,
             to: targetUserId,
             content: content,
@@ -75,7 +73,7 @@ let socket = null;
                 };
                 addMessage(userMessage, 'sent');
                 messageInput.value = '';
-            // Send message via HTTP API
+
             fetch('http://localhost:3000/api/chatbot/message', {
                 method: 'POST',
                 headers: {
@@ -101,7 +99,7 @@ let socket = null;
             });
         }
 
-        // Function to format text with bold for *text*
+
         function formatMessage(text) {
             return text.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
         }
@@ -133,13 +131,11 @@ let socket = null;
         }
 
         function updateOnlineUsers() {
-            // This is optional - you could implement an API to get online users
             const onlineDiv = document.getElementById('onlineUsers');
             onlineDiv.style.display = 'block';
             onlineDiv.innerHTML = '<strong>🟢 Online Status:</strong> Real-time updates enabled';
         }
 
-        // Send message on Enter key
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('messageInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -148,7 +144,6 @@ let socket = null;
             });
         });
 
-        // Optional: Typing indicators
         let typingTimer;
         document.addEventListener('DOMContentLoaded', () => {
             const messageInput = document.getElementById('messageInput');

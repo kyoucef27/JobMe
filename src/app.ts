@@ -11,16 +11,19 @@ import { initializeSocket } from './lib/socket';
 const app = express();
 export const server = createServer(app);
 import aichatroutes from './routes/ai.routes'
-// Initialize Socket.IO
+
+import { sendOTP } from "./lib/otp";
+import { verifyOTPAndCreateAccount } from "./controllers/verification.controller";
+
 initializeSocket(server);
 
-// CORS configuration
+
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "http://localhost:5500", // Live Server default port
-    "http://127.0.0.1:5500", // Live Server alternative
-    "http://localhost:8080", // Alternative port
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "http://localhost:8080",
     "http://127.0.0.1:3000"
   ],
   credentials: true,
@@ -31,6 +34,7 @@ app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/users', userRoutes);
+app.use('/api/users', verifyOTPAndCreateAccount);
 app.use('/api/upload',uploadRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot',aichatroutes)
