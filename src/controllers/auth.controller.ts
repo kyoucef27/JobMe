@@ -69,9 +69,9 @@ export const SignIn = async (
       console.error("OTP sending failed:", otpError);
       return res.status(500).json({ message: "Failed to send OTP verification email" });
     }
-    
-    
-    const pendingUser = {
+   
+
+    req.session.pendingUser = {
       name,
       email,
       phone,
@@ -80,19 +80,11 @@ export const SignIn = async (
       address,
       pfp
     };
-    
-    
-    res.cookie('pendingRegistration', JSON.stringify(pendingUser), { 
-      httpOnly: true,
-      maxAge: 10 * 60 * 1000, 
-      secure: process.env.NODE_ENV === 'production'
-    });
-    
-    
-    res.status(200).json({
-      message: "OTP verification required",
-      email: email,
-      redirect: "/verify-otp"
+
+res.status(200).json({
+  message: "OTP verification required",
+  email,
+  redirect: "/verify-otp"
     });
     
     

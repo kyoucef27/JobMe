@@ -11,13 +11,11 @@ import { initializeSocket } from './lib/socket';
 const app = express();
 export const server = createServer(app);
 import aichatroutes from './routes/ai.routes'
-
-import { sendOTP } from "./lib/otp";
 import { verifyOTPAndCreateAccount } from "./controllers/verification.controller";
+import { PendingUser } from "./models/sessiondata.model";
+import session from 'express-session'
 
 initializeSocket(server);
-
-
 app.use(cors({
   origin: [
     "http://localhost:3000",
@@ -29,9 +27,20 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
-
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    maxAge: 10 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production'
+  }
+}));
 app.use(cookieParser());
 app.use(express.json());
+
+
 
 app.use('/api/users', userRoutes);
 app.use('/api/users', verifyOTPAndCreateAccount);

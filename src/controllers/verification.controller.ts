@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, response } from "express";
 import { generateToken} from "../lib/utils";
 import {  User } from "../models/user.model";
 import { verifyOTP } from "../lib/otp";
+import { PendingUser } from "../models/sessiondata.model";
 export const verifyOTPAndCreateAccount = async (
   req: Request, 
   res: Response, 
@@ -14,9 +15,9 @@ export const verifyOTPAndCreateAccount = async (
       return res.status(400).json({ message: "OTP is required" });
     }
     
-    const pendingUserData = JSON.parse(req.cookies.pendingRegistration || '{}');
+    const pendingUserData = req.session.pendingUser;
     
-    if (!pendingUserData.email) {
+    if (!pendingUserData || !pendingUserData.email) {
       return res.status(400).json({ message: "Registration session expired" });
     }
     
@@ -31,20 +32,12 @@ export const verifyOTPAndCreateAccount = async (
     const newuser = new User(pendingUserData);
     await newuser.save();
     
-    res.clearCookie('pendingRegistration');
+    req.session.pendingUser = undefined;
     
     generateToken(newuser._id.toString(), res);
     
     res.status(201).json({
       message: "User registered successfully",
-      user: {
-        _id: newuser._id,
-        name: newuser.name,
-        email: newuser.email,
-        phone: newuser.phone,
-        address: newuser.address,
-        pfp: newuser.pfp
-      }
     });
     
   } catch (error) {

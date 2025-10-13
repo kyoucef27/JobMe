@@ -1,4 +1,3 @@
-
 import { Schema, model, models, Document } from "mongoose";
 
 interface IMessage extends Document {
