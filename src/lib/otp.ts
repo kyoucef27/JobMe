@@ -1,9 +1,12 @@
 import nodemailer from "nodemailer";
-import { customAlphabet } from "nanoid";
 import bcrypt from "bcrypt";
 import Otp from "../models/otp.model";
 
-const nanoid = customAlphabet("0123456789", 6);
+import crypto from "crypto";
+
+function generateOTP(): string {
+  return crypto.randomInt(100000, 999999).toString();
+}
 export async function verifyOTP(email: string, otp: number): Promise<boolean> {
   const otpRecord = await Otp.findOne({ email }).sort({ createdAt: -1 });
   
@@ -24,7 +27,7 @@ export async function verifyOTP(email: string, otp: number): Promise<boolean> {
   return isValid;
 }
 export async function sendOTP(email: string): Promise<void> {
-  const otpDigits = nanoid(); 
+  const otpDigits = generateOTP(); 
   const hash = await bcrypt.hash(otpDigits, 10);
 
   const UserOTP = new Otp({
