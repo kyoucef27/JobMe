@@ -9,6 +9,8 @@ import { createServer } from "http";
 import chatRoutes from './routes/chat.routes';
 import gigRoutes from './routes/gig.routes'
 import orderRoutes from './routes/order.routes'
+import simplegigRoutes from './routes/simplegig.routes'
+import simpleorderRoutes from './routes/simpleorder.routes'
 import { initializeSocket } from './lib/socket';
 const app = express();
 export const server = createServer(app);
@@ -51,6 +53,8 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot',aichatroutes);
 app.use('/api/gigs', gigRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/simplegigs', simplegigRoutes);
+app.use('/api/simpleorders', simpleorderRoutes);
 app.use(errorHandler);
 
 export default app
