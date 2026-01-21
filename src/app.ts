@@ -11,10 +11,15 @@ import gigRoutes from './routes/gig.routes'
 import orderRoutes from './routes/order.routes'
 import simplegigRoutes from './routes/simplegig.routes'
 import simpleorderRoutes from './routes/simpleorder.routes'
+import emailRoutes from './routes/email.routes'
 import { initializeSocket } from './lib/socket';
 const app = express();
 export const server = createServer(app);
 import aichatroutes from './routes/ai.routes'
+import frauduserRoutes from './routes/frauduser.routes'
+import reportRoutes from './routes/report.routes'
+import adminRoutes from './routes/admin.routes'
+import adminDataRoutes from './routes/admin-data.routes'
 import { verifyOTPAndCreateAccount } from "./controllers/verification.controller";
 import { PendingUser } from "./models/sessiondata.model";
 import session from 'express-session'
@@ -55,6 +60,11 @@ app.use('/api/gigs', gigRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/simplegigs', simplegigRoutes);
 app.use('/api/simpleorders', simpleorderRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/fraud', frauduserRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin/data', adminDataRoutes);
 app.use(errorHandler);
 
 export default app

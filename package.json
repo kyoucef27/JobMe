@@ -44,6 +44,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express-session": "^1.18.2",
+    "googleapis": "^166.0.0",
     "groq-sdk": "^0.32.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
