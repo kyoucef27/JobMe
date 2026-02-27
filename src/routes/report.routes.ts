@@ -6,9 +6,9 @@ import {
   reviewReport,
   getSellerReports,
   getMyReports,
-} from "../controllers/report.controller.ts";
+} from "../controllers/report.controller";
 import multer from "multer";
-// import { authenticateToken, isAdmin } from "../middleware/auth.middelware.ts";
+// import { authenticateToken, isAdmin } from "../middleware/auth.middelware";
 
 const router = Router();
 

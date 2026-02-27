@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Admin } from "../models/admin.model";
+import { Admin, IAdmin } from "../models/admin.model";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -104,7 +104,7 @@ export const createAdmin = async (req: Request, res: Response) => {
     const { name, email, password, role, permissions } = req.body;
 
     // Check if requester is super admin
-    if (req.user?.role !== 'super_admin') {
+    if ((req.user as any)?.role !== 'super_admin') {
       return res.status(403).json({ error: "Only super admins can create new admins" });
     }
 
@@ -166,7 +166,7 @@ export const updateAdminPermissions = async (req: Request, res: Response) => {
     const { permissions, role } = req.body;
 
     // Check if requester is super admin
-    if (req.user?.role !== 'super_admin') {
+    if ((req.user as any)?.role !== 'super_admin') {
       return res.status(403).json({ error: "Only super admins can update permissions" });
     }
 
@@ -207,7 +207,7 @@ export const updateAdminPermissions = async (req: Request, res: Response) => {
 export const listAdmins = async (req: Request, res: Response) => {
   try {
     // Check if requester is super admin
-    if (req.user?.role !== 'super_admin') {
+    if ((req.user as any)?.role !== 'super_admin') {
       return res.status(403).json({ error: "Only super admins can view all admins" });
     }
 
@@ -227,7 +227,7 @@ export const updateAdminStatus = async (req: Request, res: Response) => {
     const { status } = req.body;
 
     // Check if requester is super admin
-    if (req.user?.role !== 'super_admin') {
+    if ((req.user as any)?.role !== 'super_admin') {
       return res.status(403).json({ error: "Only super admins can change admin status" });
     }
 

@@ -64,7 +64,7 @@ export const SignIn = async (
 
   
     try {
-      await sendOTP("kefifyoucef2020@gmail.com");
+      await sendOTP(email); // Send OTP to the user's email, not hardcoded
     } catch (otpError) {
       console.error("OTP sending failed:", otpError);
       return res.status(500).json({ message: "Failed to send OTP verification email" });

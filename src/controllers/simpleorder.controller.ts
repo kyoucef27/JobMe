@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { SimpleOrder, ISimpleOrder } from "../models/simpleorder.model";
 import { SimpleGig } from "../models/simplegig.model";
+import { User } from "../models/user.model";
 import mongoose from "mongoose";
+import { analyzeOrderForFraud } from "../services/fraud-detection.service";
 
 // Create new simple order
 export const createSimpleOrder = async (
@@ -35,6 +37,10 @@ export const createSimpleOrder = async (
       return res.status(400).json({ message: "Cannot order your own gig" });
     }
 
+    // Calculate expected delivery date
+    const expectedDelivery = new Date();
+    expectedDelivery.setDate(expectedDelivery.getDate() + gig.deliveryTime);
+
     // Create order
     const newOrder = new SimpleOrder({
       gig: gigId,
@@ -44,6 +50,7 @@ export const createSimpleOrder = async (
       deliveryTime: gig.deliveryTime,
       revisions: gig.revisions,
       requirements: requirements || [],
+      expectedDelivery: expectedDelivery,
       payment: {
         amount: gig.price,
         currency: 'USD',
@@ -61,9 +68,47 @@ export const createSimpleOrder = async (
     // Update gig total orders count
     await SimpleGig.findByIdAndUpdate(gigId, { $inc: { totalOrders: 1 } });
 
+    // Run fraud detection analysis on the buyer
+    let fraudAnalysis = null;
+    try {
+      // Get buyer history
+      const buyer = await User.findById(buyerId);
+      const buyerOrders = await SimpleOrder.find({ buyer: buyerId });
+      const accountAge = buyer ? Math.floor((Date.now() - buyer.createdAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      
+      fraudAnalysis = await analyzeOrderForFraud({
+        userId: buyerId.toString(),
+        buyerId: buyerId.toString(),
+        sellerId: gig.seller._id.toString(),
+        price: gig.price,
+        buyerHistory: {
+          totalOrders: buyerOrders.length,
+          cancelledOrders: buyerOrders.filter(o => o.status === 'cancelled').length,
+          averageOrderValue: buyerOrders.length > 0 ? buyerOrders.reduce((sum, o) => sum + o.price, 0) / buyerOrders.length : 0,
+          accountAge: accountAge
+        },
+        orderDetails: {
+          requirements: requirements || [],
+          deliveryTime: gig.deliveryTime,
+          unusualPatterns: []
+        },
+        triggeringEvent: {
+          type: 'order',
+          referenceId: savedOrder._id,
+          details: { gigId, price: gig.price, requirements: requirements || [] },
+          timestamp: new Date()
+        }
+      });
+      console.log(`🔍 Fraud Analysis - Risk Score: ${fraudAnalysis.riskScore}, Recommendation: ${fraudAnalysis.recommendation}`);
+    } catch (fraudError) {
+      console.error('Fraud detection error:', fraudError);
+      // Don't fail the order if fraud detection fails
+    }
+
     res.status(201).json({
       message: "Order created successfully",
-      order: savedOrder
+      order: savedOrder,
+      fraudAnalysis: fraudAnalysis
     });
   } catch (error) {
     next(error);
