@@ -81,6 +81,16 @@ export const adminLogin = async (req: Request, res: Response) => {
       { expiresIn: "8h" }
     );
 
+    // Persist admin token in an httpOnly cookie so browser clients can
+    // automatically use it for protected admin operations.
+    res.cookie("admin_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: (process.env.ADMIN_COOKIE_SAMESITE as "strict" | "lax" | "none") || "lax",
+      path: "/",
+      maxAge: 8 * 60 * 60 * 1000,
+    });
+
     res.json({
       message: "Login successful",
       token,

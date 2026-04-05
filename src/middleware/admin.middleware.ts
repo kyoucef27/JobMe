@@ -10,6 +10,22 @@ interface AdminTokenPayload {
   type: string;
 }
 
+const getTokenFromCookieHeader = (cookieHeader?: string): string | undefined => {
+  if (!cookieHeader) {
+    return undefined;
+  }
+
+  const parts = cookieHeader.split(";");
+  for (const part of parts) {
+    const [key, ...valueParts] = part.trim().split("=");
+    if (key === "admin_token") {
+      return decodeURIComponent(valueParts.join("="));
+    }
+  }
+
+  return undefined;
+};
+
 // Protect admin routes - verify JWT token
 export const protectAdminRoute = async (
   req: Request,
@@ -17,13 +33,18 @@ export const protectAdminRoute = async (
   next: NextFunction
 ) => {
   try {
-    // Get token from Authorization header
+    // Get token from Authorization header first, then fall back to cookie.
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const tokenFromHeader = authHeader?.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : undefined;
+    const tokenFromCookie = (req as any).cookies?.admin_token as string | undefined;
+    const tokenFromRawCookie = getTokenFromCookieHeader(req.headers.cookie);
+    const token = tokenFromHeader || tokenFromCookie || tokenFromRawCookie;
+
+    if (!token) {
       return res.status(401).json({ error: "Unauthorized - No token provided" });
     }
-
-    const token = authHeader.split(' ')[1];
 
     // Verify token
     const decoded = jwt.verify(
