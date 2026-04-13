@@ -2,6 +2,9 @@ I-SIGNIN , LOG IN/OUT , UPDATE USER PROFILE  // DONE
 
 chat app n//DONE
 EMAIL VERIFICATION WITH NODEMAILER //DONE
+face VERIFICATION
+
+curl.exe -X POST "http://localhost:3000/verify-id" -F "idImage=@C:/Users/kefif/Desktop/studies/pfe/id.jpg" -F "selfie=@C:/Users/kefif/Desktop/studies/pfe/selfie.jpg"
 
 II-ARTIFICIAL INTELLIGENCE USING GROQ
     I-NON PAID FEATURES

@@ -20,9 +20,9 @@ import frauduserRoutes from './routes/frauduser.routes'
 import reportRoutes from './routes/report.routes'
 import adminRoutes from './routes/admin.routes'
 import adminDataRoutes from './routes/admin-data.routes'
-import { verifyOTPAndCreateAccount } from "./controllers/verification.controller";
-import { PendingUser } from "./models/sessiondata.model";
 import session from 'express-session'
+import verificationRoutes from './routes/verification.routes'
+import faceVerificationRoutes from './routes/faceverification.routes'
 
 const allowedOrigins = new Set([
   "http://localhost:3000",
@@ -62,7 +62,7 @@ app.use(express.json());
 
 
 app.use('/api/users', userRoutes);
-app.use('/api/users', verifyOTPAndCreateAccount);
+app.use('/api/users', verificationRoutes);
 app.use('/api/upload',uploadRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot',aichatroutes);
@@ -75,6 +75,7 @@ app.use('/api/fraud', frauduserRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/data', adminDataRoutes);
+app.use('/', faceVerificationRoutes);
 app.use(errorHandler);
 
 export default app

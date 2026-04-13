@@ -3,6 +3,7 @@ import { generateToken} from "../lib/utils";
 import {  User } from "../models/user.model";
 import { verifyOTP } from "../lib/otp";
 import { PendingUser } from "../models/sessiondata.model";
+import { verifyFaceWithInsightService } from "../services/faceVerification.service";
 export const verifyOTPAndCreateAccount = async (
   req: Request, 
   res: Response, 
@@ -40,6 +41,36 @@ export const verifyOTPAndCreateAccount = async (
       message: "User registered successfully",
     });
     
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyIdFace = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const files = req.files as
+      | { [fieldname: string]: Express.Multer.File[] }
+      | undefined;
+
+    const idImage = files?.idImage?.[0];
+    const selfie = files?.selfie?.[0];
+
+    if (!idImage || !selfie) {
+      return res.status(400).json({
+        message: "Both idImage and selfie images are required",
+      });
+    }
+
+    const result = await verifyFaceWithInsightService(idImage, selfie);
+
+    return res.status(200).json({
+      match: result.match,
+      similarity: result.similarity,
+    });
   } catch (error) {
     next(error);
   }
