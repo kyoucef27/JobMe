@@ -62,25 +62,35 @@ export const verifyIdFace = async (
       | undefined;
 
     const idImage = files?.idImage?.[0];
-    const selfie = files?.selfie?.[0];
+    const selfies = [...(files?.selfies || []), ...(files?.selfie || [])];
 
-    if (!idImage || !selfie) {
+    if (!idImage) {
       return res.status(400).json({
-        message: "Both idImage and selfie images are required",
+        message: "idImage is required",
       });
     }
 
-    const result = await verifyFaceWithInsightService(idImage, selfie);
-    const verificationThreshold = 0.59;
-    const idVerified = result.similarity > verificationThreshold;
+    if (selfies.length < 2 || selfies.length > 5) {
+      return res.status(400).json({
+        message: "Provide between 2 and 5 selfie images",
+        selfiesReceived: selfies.length,
+      });
+    }
+
+    const result = await verifyFaceWithInsightService(idImage, selfies);
+    const idVerified = result.match;
 
     if (idVerified) {
       await User.findByIdAndUpdate(userId, { idVerified: true });
     }
 
     return res.status(200).json({
-      match: idVerified,         // consistent with local threshold
+      match: result.match,
+      confidence: result.confidence,
       similarity: result.similarity,
+      threshold: result.threshold,
+      explanation: result.explanation,
+      selfieDiagnostics: result.selfie_diagnostics,
       idVerified,
     });
   } catch (error) {

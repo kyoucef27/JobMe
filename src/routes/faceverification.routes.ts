@@ -10,7 +10,8 @@ router.post(
   protectRoute,
   upload.fields([
     { name: "idImage", maxCount: 1 },
-    { name: "selfie", maxCount: 1 },
+    { name: "selfies", maxCount: 5 },
+    { name: "selfie", maxCount: 5 },
   ]),
   verifyIdFace
 );
