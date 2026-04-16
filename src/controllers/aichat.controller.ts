@@ -7,6 +7,7 @@ export const sendMessageAI = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("Received request to send AI message:", req.body);
   try {
     const { from, to, content } = req.body;
 
@@ -25,9 +26,21 @@ export const sendMessageAI = async (
 
     const savedMessage = await message.save();
 
+    // Add pre content
+    const preContent = `Hello. You are an AI assistant for a freelancing platform called JobMe.
+      Your task is to help users find suitable gigs based on their skills and preferences.
+      When a user sends you a message,
+      analyze their request and respond with relevant gig tags.
+      available gig tags (select from these only): UX, Web, Development, Tailwind, CSS, Design, Video, UI, Figma, Logo, a.
+      Don't respond in your way, but respond STRICTLY in this format:
+      ["tag1", "tag2", "tag3", ...] (not necessarily 3 tags, but at least 1 tag if you find any relevant tag, otherwise respond with an empty array [])
+      If this message is not a request for gig recommendations, respond appropriately based on the user's query.
+      User request: `;
+    const finalContent = preContent + savedMessage.content;
+
     const io = getSocketIO();
     const connectedUsers = getConnectedUsers();
-    const AIRESPONSE = await AICHATBOT(savedMessage.content);
+    const AIRESPONSE = await AICHATBOT(finalContent);
 
     const aiMessage = new AIMessage({
       from:savedMessage.to,

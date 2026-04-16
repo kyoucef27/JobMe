@@ -24,7 +24,8 @@ export const createSimpleGig = async (
       deliveryTime,
       revisions,
       features,
-      images
+      images,
+      questions
     } = req.body;
 
     // Validate required fields
@@ -43,7 +44,8 @@ export const createSimpleGig = async (
       revisions: revisions || 0,
       features: features || [],
       images: images || [],
-      seller: sellerId
+      seller: sellerId,
+      questions: questions || []
     });
 
     const savedGig = await newGig.save();

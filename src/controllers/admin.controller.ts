@@ -5,7 +5,9 @@ import jwt from "jsonwebtoken";
 
 // Admin Login
 export const adminLogin = async (req: Request, res: Response) => {
+  console.log("adminLogin");
   try {
+    console.log("adminLogin inside try");
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -17,6 +19,8 @@ export const adminLogin = async (req: Request, res: Response) => {
     if (!admin) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    console.log('admin checked');
 
     // Check if account is locked
     if (admin.lockUntil && admin.lockUntil > new Date()) {
@@ -80,7 +84,8 @@ export const adminLogin = async (req: Request, res: Response) => {
       process.env.JWT_SECRET || "fallback-secret-key",
       { expiresIn: "8h" }
     );
-
+    console.log('Token generated');
+    console.log(`True or False: ${process.env.NODE_ENV === "production"}`);
     // Persist admin token in an httpOnly cookie so browser clients can
     // automatically use it for protected admin operations.
     res.cookie("admin_token", token, {
@@ -108,15 +113,24 @@ export const adminLogin = async (req: Request, res: Response) => {
   }
 };
 
+export const GetMeAdmin = async (req: any, res: any) => {
+  // req.user should be set by protectRoute
+  console.log("GetMe")
+  return res.status(200).json({
+    logged: true,
+    user: req.user,
+  });
+};
+
 // Create Admin (Super Admin only)
 export const createAdmin = async (req: Request, res: Response) => {
   try {
     const { name, email, password, role, permissions } = req.body;
 
     // Check if requester is super admin
-    if ((req.user as any)?.role !== 'super_admin') {
+    /*if ((req.user as any)?.role !== 'super_admin') {
       return res.status(403).json({ error: "Only super admins can create new admins" });
-    }
+    }*/
 
     // Check if admin already exists
     const existingAdmin = await Admin.findOne({ email: email.toLowerCase() });
@@ -265,5 +279,22 @@ export const updateAdminStatus = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Update admin status error:", error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+// Admin Logout
+export const adminLogout = async (req: Request, res: Response) => {
+  try {
+    res.clearCookie("admin_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: (process.env.ADMIN_COOKIE_SAMESITE as "strict" | "lax" | "none") || "lax",
+      path: "/",
+    });
+
+    return res.status(200).json({ message: "Logout successful" });
+  } catch (error: any) {
+    console.error("Admin logout error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };

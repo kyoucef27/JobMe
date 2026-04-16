@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
-import { generateToken } from "../lib/utils";
-import { User } from "../models/user.model";
+import { Request, Response, NextFunction, response } from "express";
+import { generateToken} from "../lib/utils";
+import {  User } from "../models/user.model";
 import { verifyOTP } from "../lib/otp";
 import { PendingUser } from "../models/sessiondata.model";
 import { verifyFaceWithInsightService } from "../services/faceVerification.service";

@@ -2,23 +2,18 @@ import nodemailer from "nodemailer";
 
 export async function sendEmail(email: string, message: string): Promise<void> {
   try {
-    // Check if credentials are loaded
-    if (!process.env.EMAIL_USER || !process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.REFRESH_TOKEN) {
-      throw new Error('Email OAuth2 credentials not configured in .env file');
-    }
-
-    console.log('📧 Configuring OAuth2 email service...');
-    
-    // Use OAuth2 authentication - remove accessToken to auto-refresh
+    // Use OAuth2 authentication with better configuration
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
       auth: {
         type: "OAuth2",
         user: process.env.EMAIL_USER,
-        clientId: process.env.GMAIL_CLIENT_ID,
-        clientSecret: process.env.GMAIL_CLIENT_SECRET,
+        clientId: process.env.CLIENT_ID,
+        clientSecret: process.env.CLIENT_SECRET,
         refreshToken: process.env.REFRESH_TOKEN,
-        // Don't include accessToken - let it refresh automatically
+        accessToken: process.env.ACCESS_TOKEN, 
       },
     });
 

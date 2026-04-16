@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { SimpleOrder, ISimpleOrder } from "../models/simpleorder.model";
+import { SimpleOrder } from "../models/simpleorder.model";
 import { SimpleGig } from "../models/simplegig.model";
-import { User } from "../models/user.model";
 import mongoose from "mongoose";
-import { analyzeOrderForFraud } from "../services/fraud-detection.service";
+import { SimpleOrderMessage } from "../models/simpleordermessage.model";
+import { access } from "fs";
 
 // Create new simple order
 export const createSimpleOrder = async (
@@ -17,6 +17,8 @@ export const createSimpleOrder = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    console.log("[createSimpleOrder] Request body:", req.body);
+
     const {
       gigId,
       requirements
@@ -26,22 +28,19 @@ export const createSimpleOrder = async (
       return res.status(400).json({ message: "Gig ID is required" });
     }
 
-    // Validate gig exists and is active
     const gig = await SimpleGig.findById(gigId).populate('seller', 'name email');
     if (!gig || !gig.isActive) {
       return res.status(404).json({ message: "Gig not found or inactive" });
     }
 
-    // Check if buyer is not the seller
     if (gig.seller._id.toString() === buyerId.toString()) {
       return res.status(400).json({ message: "Cannot order your own gig" });
     }
 
-    // Calculate expected delivery date
-    const expectedDelivery = new Date();
-    expectedDelivery.setDate(expectedDelivery.getDate() + gig.deliveryTime);
+    const now = new Date();
+    const expectedDelivery = new Date(now);
+    expectedDelivery.setDate(expectedDelivery.getDate() + Number(gig.deliveryTime || 1));
 
-    // Create order
     const newOrder = new SimpleOrder({
       gig: gigId,
       buyer: buyerId,
@@ -49,12 +48,16 @@ export const createSimpleOrder = async (
       price: gig.price,
       deliveryTime: gig.deliveryTime,
       revisions: gig.revisions,
+      expectedDelivery,
       requirements: requirements || [],
-      expectedDelivery: expectedDelivery,
+      status: 'pending',
       payment: {
         amount: gig.price,
         currency: 'USD',
         status: 'pending'
+      },
+      timeline: {
+        started: now
       }
     });
 
@@ -65,50 +68,11 @@ export const createSimpleOrder = async (
       { path: 'seller', select: 'name email pfp' }
     ]);
 
-    // Update gig total orders count
     await SimpleGig.findByIdAndUpdate(gigId, { $inc: { totalOrders: 1 } });
-
-    // Run fraud detection analysis on the buyer
-    let fraudAnalysis = null;
-    try {
-      // Get buyer history
-      const buyer = await User.findById(buyerId);
-      const buyerOrders = await SimpleOrder.find({ buyer: buyerId });
-      const accountAge = buyer ? Math.floor((Date.now() - buyer.createdAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-      
-      fraudAnalysis = await analyzeOrderForFraud({
-        userId: buyerId.toString(),
-        buyerId: buyerId.toString(),
-        sellerId: gig.seller._id.toString(),
-        price: gig.price,
-        buyerHistory: {
-          totalOrders: buyerOrders.length,
-          cancelledOrders: buyerOrders.filter(o => o.status === 'cancelled').length,
-          averageOrderValue: buyerOrders.length > 0 ? buyerOrders.reduce((sum, o) => sum + o.price, 0) / buyerOrders.length : 0,
-          accountAge: accountAge
-        },
-        orderDetails: {
-          requirements: requirements || [],
-          deliveryTime: gig.deliveryTime,
-          unusualPatterns: []
-        },
-        triggeringEvent: {
-          type: 'order',
-          referenceId: savedOrder._id,
-          details: { gigId, price: gig.price, requirements: requirements || [] },
-          timestamp: new Date()
-        }
-      });
-      console.log(`🔍 Fraud Analysis - Risk Score: ${fraudAnalysis.riskScore}, Recommendation: ${fraudAnalysis.recommendation}`);
-    } catch (fraudError) {
-      console.error('Fraud detection error:', fraudError);
-      // Don't fail the order if fraud detection fails
-    }
 
     res.status(201).json({
       message: "Order created successfully",
-      order: savedOrder,
-      fraudAnalysis: fraudAnalysis
+      order: savedOrder
     });
   } catch (error) {
     next(error);
@@ -202,6 +166,7 @@ export const getSimpleSellerOrders = async (
 };
 
 // Get single simple order
+// Modified by Me
 export const getSimpleOrderById = async (
   req: Request,
   res: Response,
@@ -224,13 +189,60 @@ export const getSimpleOrderById = async (
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Check if user is involved in this order
-    if (order.buyer._id.toString() !== userId?.toString() && 
-        order.seller._id.toString() !== userId?.toString()) {
+    // By Me
+    // Check if the user created the Gig associated with this order
+    const gig = await SimpleGig.findById(order.gig)
+      /*.populate('gig', 'title images price category seller')*/
+      /*.populate('buyer', 'name email pfp')*/
+      /*.populate('seller', 'name email pfp');*/
+
+    if (!gig) {
+      return res.status(404).json({ message: "Associated gig not found" });
+    }
+
+    if (gig.seller._id.toString() == userId?.toString()) {
+      order.accessLevel = "seller";
+      res.status(200).json({ order });
+    } else if (order.buyer._id.toString() == userId?.toString()) {
+      order.accessLevel = "buyer";
+      res.status(200).json({ order });
+    } else {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    res.status(200).json({ order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//Added by Me
+export const getSimpleOrderByTwoUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { me, other } = req.query;
+    //const userId = req.user?._id;
+
+    const orders = await SimpleOrder.find({
+      $or: [
+        { seller: me, buyer: other },
+        { seller: other, buyer: me }
+      ]
+    }).populate('gig', 'title images price category seller')
+      .populate('buyer', 'name email pfp')
+      .populate('seller', 'name email pfp');
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const ordersToSell = orders.filter(order => order.seller._id.toString() === me);
+    const ordersToBuy = orders.filter(order => order.buyer._id.toString() === me);
+
+    return res.status(200).json({ orders: [ordersToSell, ordersToBuy] });
+
   } catch (error) {
     next(error);
   }
@@ -442,7 +454,8 @@ export const addSimpleReview = async (
       return res.status(400).json({ message: "Order must be completed to add review" });
     }
 
-    if (order.review) {
+    if (order.review?.comment || order.review?.rating) {
+      console.log(order);
       return res.status(400).json({ message: "Review already exists" });
     }
 
@@ -527,6 +540,107 @@ export const cancelSimpleOrder = async (
       order
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+// Add message to order conversation
+export const addSimpleOrderMessage = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // accept both keys for compatibility
+    const simpleOrderId = req.body.simpleOrderId || req.body.orderId;
+    const { message, attachments } = req.body;
+    const userId = req.user?._id;
+
+    if (!mongoose.Types.ObjectId.isValid(simpleOrderId)) {
+      return res.status(400).json({ message: "Invalid simple order ID" });
+    }
+
+    const order = await SimpleOrder.findById(simpleOrderId);
+    if (!order) {
+      return res.status(404).json({ message: "Simple order not found" });
+    }
+
+    if (
+      order.buyer.toString() !== userId?.toString() &&
+      order.seller.toString() !== userId?.toString()
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const toUserId =
+      order.buyer.toString() === userId?.toString() ? order.seller : order.buyer;
+
+    const simpleOrderMessage = new SimpleOrderMessage({
+      orderId: simpleOrderId, // ✅ schema field name
+      from: userId,
+      to: toUserId,
+      message,
+      attachments: attachments || [],
+      kind: "simpleOrderMessage",
+      timestamp: new Date(),
+    });
+
+    const savedMessage = await simpleOrderMessage.save();
+    await savedMessage.populate([
+      { path: "from", select: "name pfp" },
+      { path: "to", select: "name pfp" },
+    ]);
+
+    res.status(200).json({
+      message: "Message added successfully",
+      data: savedMessage,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSimpleOrderMessages = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { me, orderId } = req.query;
+
+    if (!me || !orderId) {
+      return res.status(400).json({
+        error: "Missing required query parameters: me, other"
+      });
+    }
+
+    const message = await SimpleOrderMessage.findOne({ orderId })
+    .sort({ createdAt: 1 });
+
+    if(!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Add role field to indicate if the message is from the buyer or seller perspective
+    if(message.from.toString() == me.toString()) {
+      console.log("Message from me:", message);
+      message.role = "buyer";
+    } else if(message.to.toString() == me.toString()) {
+      console.log("Message to me:", message);
+      message.role = "seller";
+    } else {
+      console.log("Message not related to me:", message);
+      message.role = "unknown";
+    }
+
+    console.log("Final message with role:", message);
+
+    res.status(200).json({
+      message
+    });
+
+  } catch (error) {
+    console.error("Error fetching messages:", error);
     next(error);
   }
 };

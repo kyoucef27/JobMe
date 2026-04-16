@@ -32,6 +32,7 @@ export const protectAdminRoute = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log('Protect route');
   try {
     // Get token from Authorization header first, then fall back to cookie.
     const authHeader = req.headers.authorization;
@@ -43,6 +44,7 @@ export const protectAdminRoute = async (
     const token = tokenFromHeader || tokenFromCookie || tokenFromRawCookie;
 
     if (!token) {
+      console.log("!Token");
       return res.status(401).json({ error: "Unauthorized - No token provided" });
     }
 

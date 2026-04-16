@@ -341,7 +341,7 @@ export const getCategories = async (
       'Programming & Tech',
       'Data',
       'Business',
-      'Lifestyle'
+      'Lifestyle',
     ];
 
     res.status(200).json({ categories });

@@ -15,6 +15,7 @@ export const upload = multer({
     const ok = /^image\/(png|jpe?g|webp|gif|heic|heif|svg\+xml)$/i.test(
       file.mimetype
     );
+    console.log("File type:", file.mimetype, "Allowed:", ok);
     if (ok) return cb(null, true);
     cb(
       new multer.MulterError(
@@ -31,6 +32,7 @@ export const uploadImage = async (
   next: NextFunction
 ) => {
   try {
+    console.log("Received file:", req.file ? req.file.originalname : "No file");
     if (!req.file) {
       return res.status(400).json({ error: "No file provided" });
     }

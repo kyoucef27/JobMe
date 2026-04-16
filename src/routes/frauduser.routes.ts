@@ -19,12 +19,12 @@ router.post("/flag", flagUserAsFraud);
 // Check user's fraud status (before processing transactions)
 router.get("/check/:userId", checkUserFraudStatus);
 
-// Admin endpoints - require authenticated admin with fraud management permission
-router.get("/cases", protectAdminRoute, requirePermission("canManageFraud"), getFlaggedUsers);
-router.get("/cases/:id", protectAdminRoute, requirePermission("canManageFraud"), getFraudCaseDetails);
-router.put("/cases/:id/review", protectAdminRoute, requirePermission("canManageFraud"), reviewFraudCase);
-router.put("/cases/:id/resolve", protectAdminRoute, requirePermission("canManageFraud"), resolveFraudCase);
-router.post("/cases/:id/notes", protectAdminRoute, requirePermission("canManageFraud"), addNoteToFraudCase);
-router.get("/statistics", protectAdminRoute, requirePermission("canManageFraud"), getFraudStatistics);
+// Admin endpoints - require authentication and admin role
+router.get("/cases", protectAdminRoute, requirePermission("view_fraud_cases"), getFlaggedUsers);
+router.get("/cases/:id", protectAdminRoute, requirePermission("view_fraud_cases"), getFraudCaseDetails);
+router.put("/cases/:id/review", protectAdminRoute, requirePermission("review_fraud_cases"), reviewFraudCase);
+router.put("/cases/:id/resolve", protectAdminRoute, requirePermission("resolve_fraud_cases"), resolveFraudCase);
+router.post("/cases/:id/notes", protectAdminRoute, requirePermission("manage_fraud_cases"), addNoteToFraudCase);
+router.get("/statistics", protectAdminRoute, requirePermission("view_fraud_statistics"), getFraudStatistics);
 
 export default router;

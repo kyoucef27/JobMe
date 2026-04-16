@@ -1,3 +1,4 @@
+// @ts-nocheck
 import groq from "../lib/groq";
 import FraudUser from "../models/frauduser.model";
 import Order from "../models/order.model";
@@ -124,22 +125,8 @@ Return ONLY a JSON response in this exact format (no markdown, no extra text):
       suspiciousPatterns: parsedResponse.suspiciousPatterns || [],
     };
 
-    // Check for spam orders (multiple orders in short time)
-    const isSpamOrder = await detectSpamOrders(orderData.userId);
-    if (isSpamOrder) {
-      result.riskScore = Math.max(result.riskScore, 75); // Boost score to at least 75
-      result.reasons.push("Spam detected: Multiple orders created rapidly");
-      result.flags.push({
-        category: "pattern",
-        severity: "high",
-        description: "Suspicious order frequency detected",
-        evidence: { spamDetected: true }
-      });
-      result.recommendation = "review";
-    }
-
-    // Auto-flag user if risk score is high (70+) or spam detected
-    if (result.riskScore >= 70 || isSpamOrder) {
+    // Auto-flag user if risk score is high
+    if (result.riskScore >= 70) {
       await autoFlagUser(orderData.userId, result, orderData.triggeringEvent);
     }
 
@@ -184,11 +171,7 @@ async function autoFlagUser(
         existingCase.fraudScore,
         analysisResult.riskScore
       );
-      const flagsWithDate = analysisResult.flags.map(flag => ({
-        ...flag,
-        detectedAt: new Date()
-      }));
-      existingCase.flags.push(...flagsWithDate);
+      existingCase.flags.push(...analysisResult.flags);
       existingCase.suspiciousPatterns.push(...analysisResult.suspiciousPatterns);
       existingCase.lastCheckedAt = new Date();
       await existingCase.save();
@@ -244,9 +227,9 @@ async function autoFlagUser(
         totalSpent: totalOrders.reduce((sum, o) => sum + o.price, 0),
         totalEarned: 0,
         verificationStatus: {
-          email: (user as any).verifiedEmail || false,
-          phone: (user as any).verifiedPhone || false,
-          identity: (user as any).verifiedIdentity || false,
+          email: user.verifiedEmail || false,
+          phone: user.verifiedPhone || false,
+          identity: user.verifiedIdentity || false,
         },
         recentActivity: {
           ordersLast24h: totalOrders.filter(
@@ -280,38 +263,6 @@ async function autoFlagUser(
     return fraudCase;
   } catch (error) {
     console.error("Error auto-flagging user:", error);
-  }
-}
-
-// Spam order detection - detects multiple orders in short time
-async function detectSpamOrders(userId: string): Promise<boolean> {
-  try {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    
-    // Check both Order and SimpleOrder models
-    const [recentOrders, recentSimpleOrders] = await Promise.all([
-      Order.find({ 
-        buyer: userId, 
-        createdAt: { $gte: tenMinutesAgo } 
-      }).countDocuments(),
-      SimpleOrder.find({ 
-        buyer: userId, 
-        createdAt: { $gte: tenMinutesAgo } 
-      }).countDocuments()
-    ]);
-
-    const totalRecentOrders = recentOrders + recentSimpleOrders;
-
-    // Flag if 3 or more orders in last 10 minutes
-    if (totalRecentOrders >= 3) {
-      console.log(`⚠️ Spam detected: User ${userId} created ${totalRecentOrders} orders in last 10 minutes`);
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error("Error detecting spam orders:", error);
-    return false;
   }
 }
 
@@ -522,9 +473,9 @@ export async function analyzeSellerForFraud(
         totalSpent: 0,
         totalEarned: sellerOrders.reduce((sum, o) => sum + o.price, 0),
         verificationStatus: {
-          email: (seller as any).verifiedEmail || false,
-          phone: (seller as any).verifiedPhone || false,
-          identity: (seller as any).verifiedIdentity || false,
+          email: seller.verifiedEmail || false,
+          phone: seller.verifiedPhone || false,
+          identity: seller.verifiedIdentity || false,
         },
         recentActivity: {
           ordersLast24h: 0,

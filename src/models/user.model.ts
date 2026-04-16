@@ -30,7 +30,10 @@ const userSchema = new Schema<IUser>(
     password: { type: String, required: true, minlength:8 },
     phone: { type: String, required: true },
     idVerified: { type: Boolean, default: false },
-    pfp: {type: String, required:false, default:userimg},
+    pfp: {
+      type: String,
+      default: userimg, // keep default only when no upload
+    },
     bday: { type: Date, required: true },
     address: {
       street: { type: String, required: true },

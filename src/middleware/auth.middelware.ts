@@ -26,6 +26,7 @@ export const protectRoute = async (
     }
 
     req.user = user;
+    console.log("User authenticated:", user);
     next();
 
   } catch (error) {

@@ -71,7 +71,7 @@ const gigSchema = new Schema<IGig>({
       'Programming & Tech',
       'Data',
       'Business',
-      'Lifestyle'
+      'Lifestyle',
     ]
   },
   subcategory: {

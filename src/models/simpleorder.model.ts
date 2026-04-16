@@ -1,3 +1,4 @@
+import { access } from "fs";
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface ISimpleOrder extends Document {
@@ -47,6 +48,7 @@ export interface ISimpleOrder extends Document {
   cancellationReason?: string;
   createdAt: Date;
   updatedAt: Date;
+  accessLevel?: "buyer" | "seller"; // virtual field, not stored in DB
 }
 
 const simpleOrderSchema = new Schema<ISimpleOrder>({
@@ -190,7 +192,11 @@ const simpleOrderSchema = new Schema<ISimpleOrder>({
   cancellationReason: {
     type: String,
     maxlength: 300
-  }
+  },
+  accessLevel: {
+    type: String,
+    enum: ['buyer', 'seller']
+}
 }, {
   timestamps: true
 });

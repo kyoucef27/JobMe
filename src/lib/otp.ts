@@ -30,26 +30,32 @@ export async function sendOTP(email: string): Promise<void> {
   const otpDigits = generateOTP(); 
   const hash = await bcrypt.hash(otpDigits, 10);
 
+  const otpTtlMinutes = Number(process.env.OTP_TTL_MINUTES ?? 10);
+
   const UserOTP = new Otp({
     email,
     hash,
-    expires: new Date(Date.now() + 5 * 60 * 1000)
+    expires: new Date(Date.now() + otpTtlMinutes * 60 * 1000),
   });
   await UserOTP.save();
   
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     type: "OAuth2",
     user:  process.env.EMAIL_USER,
-    clientId: process.env.GMAIL_CLIENT_ID,
-    clientSecret: process.env.GMAIL_CLIENT_SECRET,
-    refreshToken: process.env.REFRESH_TOKEN,
+    clientId: process.env.CLIENT_ID,
+    clientSecret:process.env.CLIENT_SECRET,
+    refreshToken:process.env.REFRESH_TOKEN,
   },
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000, // 10 seconds
 })
   await transporter.sendMail({
-    from: process.env.EMAIL_USER || "kefifyoucef2020@gmail.com",
+    from: `${process.env.EMAIL_USER || "kefifyoucef2020@gmail.com"}`,
     to: email,
     subject: "Your OTP Code",
     html: `
@@ -60,7 +66,7 @@ const transporter = nodemailer.createTransport({
           <div style="background-color: #f8f9fa; border: 2px solid #28a745; border-radius: 6px; padding: 20px; margin: 20px 0;">
             <span style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #28a745;">${otpDigits}</span>
           </div>
-          <p style="margin: 0; font-size: 14px; color: #6c757d;">This code expires in 5 minutes</p>
+          <p style="margin: 0; font-size: 14px; color: #6c757d;">This code expires in ${otpTtlMinutes} minutes</p>
         </div>
         <div style="text-align: center; padding: 20px; color: #6c757d;">
           <p style="margin: 0; font-size: 12px;">If you didn't request this code, please ignore this email.</p>

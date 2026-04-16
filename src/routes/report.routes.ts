@@ -41,9 +41,9 @@ router.get("/my-reports", protectRoute, getMyReports);
 // Public/Semi-public endpoints
 router.get("/seller/:sellerId", getSellerReports);
 
-// Admin endpoints - require authenticated admin with report management permission
-router.get("/all", protectAdminRoute, requirePermission("canManageReports"), getAllReports);
-router.get("/:id", protectAdminRoute, requirePermission("canManageReports"), getReportDetails);
-router.put("/:id/review", protectAdminRoute, requirePermission("canManageReports"), reviewReport);
+// Admin endpoints - require authentication and admin role
+router.get("/all", protectAdminRoute, requirePermission("view_reports"), getAllReports);
+router.get("/:id", protectAdminRoute, requirePermission("view_reports"), getReportDetails);
+router.put("/:id/review", protectAdminRoute, requirePermission("review_reports"), reviewReport);
 
 export default router;

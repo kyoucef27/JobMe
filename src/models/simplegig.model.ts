@@ -11,6 +11,7 @@ export interface ISimpleGig extends Document {
   revisions: number;
   features: string[];
   images: string[]; // Array of image URLs
+  questions: string[]; // For buyer specifications or FAQs
   seller: mongoose.Types.ObjectId; // Reference to User
   rating: {
     average: number;
@@ -77,6 +78,10 @@ const simpleGigSchema = new Schema<ISimpleGig>({
   images: [{
     type: String,
     required: true
+  }],
+  questions: [{
+    type: String,
+    maxlength: 200
   }],
   seller: {
     type: mongoose.Schema.Types.ObjectId,

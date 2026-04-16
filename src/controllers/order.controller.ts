@@ -2,9 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { Order, IOrder } from "../models/order.model";
 import { Gig } from "../models/gig.model";
 import { OrderMessage } from "../models/ordermessage.model";
-import { User } from "../models/user.model";
 import mongoose from "mongoose";
-import { analyzeOrderForFraud } from "../services/fraud-detection.service";
 
 // Create new order
 export const createOrder = async (
@@ -50,10 +48,6 @@ export const createOrder = async (
     const extrasTotal = extras?.reduce((sum: number, extra: any) => sum + extra.price, 0) || 0;
     const totalAmount = packageDetails.price + extrasTotal;
 
-    // Calculate expected delivery date
-    const expectedDelivery = new Date();
-    expectedDelivery.setDate(expectedDelivery.getDate() + packageDetails.deliveryTime);
-
     // Create order
     const newOrder = new Order({
       gig: gigId,
@@ -66,7 +60,6 @@ export const createOrder = async (
       requirements: requirements || [],
       extras: extras || [],
       totalAmount,
-      expectedDelivery: expectedDelivery,
       payment: {
         amount: totalAmount,
         currency: 'USD',
@@ -84,47 +77,9 @@ export const createOrder = async (
     // Update gig total orders count
     await Gig.findByIdAndUpdate(gigId, { $inc: { totalOrders: 1 } });
 
-    // Run fraud detection analysis on the buyer
-    let fraudAnalysis = null;
-    try {
-      // Get buyer history
-      const buyer = await User.findById(buyerId);
-      const buyerOrders = await Order.find({ buyer: buyerId });
-      const accountAge = buyer ? Math.floor((Date.now() - buyer.createdAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-      
-      fraudAnalysis = await analyzeOrderForFraud({
-        userId: buyerId.toString(),
-        buyerId: buyerId.toString(),
-        sellerId: gig.seller._id.toString(),
-        price: totalAmount,
-        buyerHistory: {
-          totalOrders: buyerOrders.length,
-          cancelledOrders: buyerOrders.filter(o => o.status === 'cancelled').length,
-          averageOrderValue: buyerOrders.length > 0 ? buyerOrders.reduce((sum, o) => sum + o.totalAmount, 0) / buyerOrders.length : 0,
-          accountAge: accountAge
-        },
-        orderDetails: {
-          requirements: requirements || [],
-          deliveryTime: packageDetails.deliveryTime,
-          unusualPatterns: []
-        },
-        triggeringEvent: {
-          type: 'order',
-          referenceId: savedOrder._id,
-          details: { gigId, package: packageType, price: totalAmount, requirements: requirements || [] },
-          timestamp: new Date()
-        }
-      });
-      console.log(`🔍 Fraud Analysis - Risk Score: ${fraudAnalysis.riskScore}, Recommendation: ${fraudAnalysis.recommendation}`);
-    } catch (fraudError) {
-      console.error('Fraud detection error:', fraudError);
-      // Don't fail the order if fraud detection fails
-    }
-
     res.status(201).json({
       message: "Order created successfully",
-      order: savedOrder,
-      fraudAnalysis: fraudAnalysis
+      order: savedOrder
     });
   } catch (error) {
     next(error);
@@ -444,6 +399,8 @@ export const addMessage = async (
       return res.status(400).json({ message: "Invalid order ID" });
     }
 
+    /*const order = await Order.findById(orderId);*/
+    //By Me
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -491,6 +448,7 @@ export const addReview = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("OOOOOOOOOOOOOOOOOO"); // DEBUG
   try {
     const { orderId } = req.params;
     const { rating, comment } = req.body;
@@ -556,6 +514,7 @@ export const getOrderMessages = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("OOOOOOOOOOOOOOOOOO");
   try {
     const { orderId } = req.params;
     const userId = req.user?._id;

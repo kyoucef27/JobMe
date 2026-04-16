@@ -8,7 +8,10 @@ import {
   addSimpleDeliverable,
   requestSimpleRevision,
   addSimpleReview,
-  cancelSimpleOrder
+  cancelSimpleOrder,
+  getSimpleOrderMessages,
+  addSimpleOrderMessage,
+  getSimpleOrderByTwoUsers
 } from "../controllers/simpleorder.controller";
 import { protectRoute } from "../middleware/auth.middelware";
 import { upload } from '../controllers/upload.controller';
@@ -22,6 +25,12 @@ router.use(protectRoute);
 router.post("/", createSimpleOrder); // Create new simple order
 router.get("/buyer", getSimpleBuyerOrders); // Get orders for logged-in buyer
 router.get("/seller", getSimpleSellerOrders); // Get orders for logged-in seller
+router.get("/messages", getSimpleOrderMessages); // Get order messages
+
+// Added by Me
+router.get("/byusers", getSimpleOrderByTwoUsers); // Get order messages
+
+
 router.get("/:orderId", getSimpleOrderById); // Get single simple order
 router.patch("/:orderId/status", updateSimpleOrderStatus); // Update simple order status
 router.delete("/:orderId/cancel", cancelSimpleOrder); // Cancel simple order
@@ -31,4 +40,5 @@ router.post("/:orderId/deliverables", upload.array("files", 10), addSimpleDelive
 router.post("/:orderId/revisions", requestSimpleRevision); // Request revision
 router.post("/:orderId/review", addSimpleReview); // Add review
 
+router.post("/:simpleOrderId/messages", upload.array("attachments", 5), addSimpleOrderMessage); // Add message
 export default router;
