@@ -9,7 +9,7 @@ import {
   checkUserFraudStatus,
   addNoteToFraudCase,
 } from "../controllers/frauduser.controller";
-// import { authenticateToken, isAdmin } from "../middleware/auth.middelware.ts";
+import { protectAdminRoute, requirePermission } from "../middleware/admin.middleware";
 
 const router = Router();
 
@@ -19,13 +19,12 @@ router.post("/flag", flagUserAsFraud);
 // Check user's fraud status (before processing transactions)
 router.get("/check/:userId", checkUserFraudStatus);
 
-// Admin endpoints - require authentication and admin role
-// Uncomment the middleware when ready to add authentication
-router.get("/cases", /* authenticateToken, isAdmin, */ getFlaggedUsers);
-router.get("/cases/:id", /* authenticateToken, isAdmin, */ getFraudCaseDetails);
-router.put("/cases/:id/review", /* authenticateToken, isAdmin, */ reviewFraudCase);
-router.put("/cases/:id/resolve", /* authenticateToken, isAdmin, */ resolveFraudCase);
-router.post("/cases/:id/notes", /* authenticateToken, isAdmin, */ addNoteToFraudCase);
-router.get("/statistics", /* authenticateToken, isAdmin, */ getFraudStatistics);
+// Admin endpoints - require authenticated admin with fraud management permission
+router.get("/cases", protectAdminRoute, requirePermission("canManageFraud"), getFlaggedUsers);
+router.get("/cases/:id", protectAdminRoute, requirePermission("canManageFraud"), getFraudCaseDetails);
+router.put("/cases/:id/review", protectAdminRoute, requirePermission("canManageFraud"), reviewFraudCase);
+router.put("/cases/:id/resolve", protectAdminRoute, requirePermission("canManageFraud"), resolveFraudCase);
+router.post("/cases/:id/notes", protectAdminRoute, requirePermission("canManageFraud"), addNoteToFraudCase);
+router.get("/statistics", protectAdminRoute, requirePermission("canManageFraud"), getFraudStatistics);
 
 export default router;

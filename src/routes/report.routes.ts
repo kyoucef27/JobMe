@@ -8,7 +8,8 @@ import {
   getMyReports,
 } from "../controllers/report.controller";
 import multer from "multer";
-// import { authenticateToken, isAdmin } from "../middleware/auth.middelware";
+import { protectRoute } from "../middleware/auth.middelware";
+import { protectAdminRoute, requirePermission } from "../middleware/admin.middleware";
 
 const router = Router();
 
@@ -34,16 +35,15 @@ const upload = multer({
 });
 
 // User endpoints - require authentication
-// Uncomment the middleware when ready to add authentication
-router.post("/submit", /* authenticateToken, */ upload.array('screenshots', 5), submitReport);
-router.get("/my-reports", /* authenticateToken, */ getMyReports);
+router.post("/submit", protectRoute, upload.array('screenshots', 5), submitReport);
+router.get("/my-reports", protectRoute, getMyReports);
 
 // Public/Semi-public endpoints
 router.get("/seller/:sellerId", getSellerReports);
 
-// Admin endpoints - require authentication and admin role
-router.get("/all", /* authenticateToken, isAdmin, */ getAllReports);
-router.get("/:id", /* authenticateToken, isAdmin, */ getReportDetails);
-router.put("/:id/review", /* authenticateToken, isAdmin, */ reviewReport);
+// Admin endpoints - require authenticated admin with report management permission
+router.get("/all", protectAdminRoute, requirePermission("canManageReports"), getAllReports);
+router.get("/:id", protectAdminRoute, requirePermission("canManageReports"), getReportDetails);
+router.put("/:id/review", protectAdminRoute, requirePermission("canManageReports"), reviewReport);
 
 export default router;
