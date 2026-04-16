@@ -75,7 +75,7 @@ app.use('/api/fraud', frauduserRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/data', adminDataRoutes);
-app.use('/', faceVerificationRoutes);
+app.use('/api/users', faceVerificationRoutes);
 app.use(errorHandler);
 
 export default app

@@ -112,6 +112,9 @@ export const LogIn = async (
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     user.lastOnline = lastOnline;
     await user.save();
@@ -121,13 +124,13 @@ export const LogIn = async (
     res.status(200).json({
       message: "User logged in successfully",
       user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      address: user.address,
-      pfp: user.pfp,
-      lastOnline: user.lastOnline,
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        pfp: user.pfp,
+        lastOnline: user.lastOnline,
       },
     });
   } catch (err) {
