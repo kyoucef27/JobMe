@@ -31,7 +31,12 @@ export const initializeSocket = (server: HTTPServer) => {
       
       socket.join(userId);
       
+      // Tell everyone else this user is now online
       socket.broadcast.emit("userOnline", userId);
+
+      // Tell THIS new socket who is already online (so late joiners see existing users)
+      const alreadyOnline = Array.from(connectedUsers.keys()).filter((id) => id !== userId);
+      socket.emit("onlineUsers", alreadyOnline);
     }
 
     socket.on("joinRoom", (roomId: string) => {
