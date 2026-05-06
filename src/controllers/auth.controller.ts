@@ -150,11 +150,35 @@ export const LogIn = async (
 };
 
 export const GetMe = async (req: any, res: any) => {
-  // req.user should be set by protectRoute
+  // req.user is set by protectRoute (full user document)
   return res.status(200).json({
     logged: true,
-    user: req.user,
+    user: {
+      ...req.user._doc || req.user,
+      idVerified: req.user.idVerified ?? false,
+    },
+    isSeller: req.user.isSeller,
   });
+};
+
+export const BecomeASeller = async (req: any, res: any) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { isSeller: true },
+      { new: true }
+    ).select("-password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.status(200).json({ message: "You are now a seller", user });
+  } catch (error) {
+    console.error("BecomeASeller error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 export const LogOut = (req: Request, res: Response, next: NextFunction) => {

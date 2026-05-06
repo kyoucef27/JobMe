@@ -15,6 +15,13 @@ export const createSimpleGig = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // Must be ID-verified to sell
+    if (!req.user?.idVerified) {
+      return res.status(403).json({
+        message: "You must verify your identity before creating gigs.",
+        requiresVerification: true,
+      });
+    }
     const {
       title,
       description,

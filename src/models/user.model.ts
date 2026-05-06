@@ -18,6 +18,7 @@ export interface IUser extends Document {
   fieldsOfInterest: Array<string>;
   status : boolean;
   lastOnline: Date;
+  isSeller: boolean;
   createdAt: Date; 
   updatedAt: Date; 
 }
@@ -43,7 +44,8 @@ const userSchema = new Schema<IUser>(
     },
     lastOnline: { type: Date, default: Date.now },
     status : {type: Boolean , default: true},
-    fieldsOfInterest: { type: [String], default: [] }
+    fieldsOfInterest: { type: [String], default: [] },
+    isSeller: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

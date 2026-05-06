@@ -17,6 +17,14 @@ export const createSimpleOrder = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // Must be ID-verified to purchase
+    if (!req.user?.idVerified) {
+      return res.status(403).json({
+        message: "You must verify your identity before placing orders.",
+        requiresVerification: true,
+      });
+    }
+
     console.log("[createSimpleOrder] Request body:", req.body);
 
     const {

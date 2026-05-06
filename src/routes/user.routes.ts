@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { LogIn, LogOut, SignIn, UpdateProfile, GetMe, GetDetails } from "../controllers/auth.controller";
+import { LogIn, LogOut, SignIn, UpdateProfile, GetMe, GetDetails, BecomeASeller } from "../controllers/auth.controller";
+import { GetSellerDashboard, SubmitFeedback, GetEarningsData } from "../controllers/dashboard.controller";
 import { protectRoute } from "../middleware/auth.middelware";
 import { upload } from '../controllers/upload.controller';
 const router = Router();
@@ -12,5 +13,13 @@ router.put("/update-profile", protectRoute, upload.single("pfp"), UpdateProfile)
 router.get("/me", protectRoute, GetMe);
 // New endpoint
 router.get("/get-details", protectRoute, GetDetails);
+// Dashboard endpoint
+router.get("/seller-dashboard", protectRoute, GetSellerDashboard);
+// Feedback endpoint
+router.post("/feedback", protectRoute, SubmitFeedback);
+// Earnings endpoint
+router.get("/earnings", protectRoute, GetEarningsData);
+// Become a seller endpoint
+router.post("/become-seller", protectRoute, BecomeASeller);
 
 export default router;
