@@ -13,3 +13,22 @@ export async function AICHATBOT(message:string) {
   });
   return(completion.choices[0]?.message?.content);
 }
+
+export async function AIJsonChatbot(systemMessage: string, userMessage: string) {
+  const completion = await groq.chat.completions.create({
+    model: /*"meta-llama/llama-4-maverick-17b-128e-instruct"*/ "llama-3.3-70b-versatile",
+    messages: [
+      {
+        role: "system",
+        content: systemMessage,
+      },
+      {
+        role: "user",
+        content: userMessage,
+      },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.5,
+  });
+  return completion.choices[0]?.message?.content;
+}

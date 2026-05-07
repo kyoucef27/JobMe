@@ -19,6 +19,7 @@ export interface ISimpleGig extends Document {
   };
   totalOrders: number;
   isActive: boolean;
+  isCustomOffer: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -107,6 +108,10 @@ const simpleGigSchema = new Schema<ISimpleGig>({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isCustomOffer: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
