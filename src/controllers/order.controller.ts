@@ -560,7 +560,6 @@ export const addReview = async (
     if (gig) {
       const newCount = gig.rating.count + 1;
       const newAverage = ((gig.rating.average * gig.rating.count) + rating) / newCount;
-
       gig.rating.average = Math.round(newAverage * 10) / 10; // Round to 1 decimal
       gig.rating.count = newCount;
       await gig.save();

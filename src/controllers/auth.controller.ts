@@ -272,7 +272,6 @@ export const UpdateProfile = async (
       const file = req.file;
       const folder =
         typeof req.body.folder === "string" ? req.body.folder : "uploads";
-
       const cldOpts = { folder, resource_type: "image" as const };
 
       try {
@@ -350,7 +349,6 @@ export const SaveGig = async (req: any, res: any) => {
   try {
     const userId = req.user?._id;
     const gigId = req.params.gigId;
-
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     if (!gigId) return res.status(400).json({ message: "Gig ID is required" });
 
@@ -402,7 +400,6 @@ export const GetSavedGigs = async (req: any, res: any) => {
       path: "savedGigs",
       populate: { path: "seller", select: "_id name pfp" }
     });
-
     if (!user) return res.status(404).json({ message: "User not found" });
 
     return res.status(200).json({ savedGigs: user.savedGigs });

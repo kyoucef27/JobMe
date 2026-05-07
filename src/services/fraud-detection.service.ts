@@ -318,7 +318,6 @@ export async function analyzeSellerForFraud(
 ): Promise<any> {
   try {
     const Report = (await import("../models/report.model")).default;
-
     // Get all reports against this seller
     const allReports = await Report.find({
       reportedUser: sellerId,
@@ -409,7 +408,6 @@ export async function analyzeSellerForFraud(
     const cancelledOrders = sellerOrders.filter(
       (o) => o.status === "cancelled"
     ).length;
-
     if (sellerOrders.length > 0) {
       const completionRate = completedOrders / sellerOrders.length;
       if (completionRate < 0.5) {
