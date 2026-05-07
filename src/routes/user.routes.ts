@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { LogIn, LogOut, SignIn, UpdateProfile, GetMe, GetDetails, BecomeASeller } from "../controllers/auth.controller";
+import { LogIn, LogOut, SignIn, UpdateProfile, GetMe, GetDetails, BecomeASeller, SaveGig, UnsaveGig, GetSavedGigs } from "../controllers/auth.controller";
 import { GetSellerDashboard, SubmitFeedback, GetEarningsData } from "../controllers/dashboard.controller";
 import { protectRoute } from "../middleware/auth.middelware";
 import { upload } from '../controllers/upload.controller';
@@ -21,5 +21,10 @@ router.post("/feedback", protectRoute, SubmitFeedback);
 router.get("/earnings", protectRoute, GetEarningsData);
 // Become a seller endpoint
 router.post("/become-seller", protectRoute, BecomeASeller);
+
+// Saved Gigs
+router.post("/saved/:gigId", protectRoute, SaveGig);
+router.delete("/saved/:gigId", protectRoute, UnsaveGig);
+router.get("/saved", protectRoute, GetSavedGigs);
 
 export default router;

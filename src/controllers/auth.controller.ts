@@ -344,3 +344,69 @@ export const GetDetails = async (req: any, res: any) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const SaveGig = async (req: any, res: any) => {
+  try {
+    const userId = req.user?._id;
+    const gigId = req.params.gigId;
+    
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!gigId) return res.status(400).json({ message: "Gig ID is required" });
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { savedGigs: gigId } },
+      { new: true }
+    ).select("-password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.status(200).json({ message: "Gig saved successfully", savedGigs: user.savedGigs });
+  } catch (error) {
+    console.error("SaveGig error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const UnsaveGig = async (req: any, res: any) => {
+  try {
+    const userId = req.user?._id;
+    const gigId = req.params.gigId;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!gigId) return res.status(400).json({ message: "Gig ID is required" });
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $pull: { savedGigs: gigId } },
+      { new: true }
+    ).select("-password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.status(200).json({ message: "Gig unsaved successfully", savedGigs: user.savedGigs });
+  } catch (error) {
+    console.error("UnsaveGig error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const GetSavedGigs = async (req: any, res: any) => {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = await User.findById(userId).populate({
+      path: "savedGigs",
+      populate: { path: "seller", select: "_id name pfp" }
+    });
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.status(200).json({ savedGigs: user.savedGigs });
+  } catch (error) {
+    console.error("GetSavedGigs error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

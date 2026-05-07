@@ -19,6 +19,7 @@ export interface IUser extends Document {
   status : boolean;
   lastOnline: Date;
   isSeller: boolean;
+  savedGigs: mongoose.Types.ObjectId[];
   createdAt: Date; 
   updatedAt: Date; 
 }
@@ -45,7 +46,8 @@ const userSchema = new Schema<IUser>(
     lastOnline: { type: Date, default: Date.now },
     status : {type: Boolean , default: true},
     fieldsOfInterest: { type: [String], default: [] },
-    isSeller: { type: Boolean, default: false }
+    isSeller: { type: Boolean, default: false },
+    savedGigs: [{ type: Schema.Types.ObjectId, ref: 'Gig', default: [] }]
   },
   { timestamps: true }
 );
