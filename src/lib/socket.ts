@@ -106,3 +106,10 @@ export const isUserOnline = (userId: string): boolean => {
 export const getOnlineUsers = (): string[] => {
   return Array.from(connectedUsers.keys());
 };
+
+export const sendNotification = (userId: string, notification: any) => {
+  const socketId = connectedUsers.get(userId);
+  if (socketId && io) {
+    io.to(socketId).emit("notification", notification);
+  }
+};

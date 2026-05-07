@@ -24,6 +24,7 @@ import { verifyOTPAndCreateAccount } from "./controllers/verification.controller
 import { PendingUser } from "./models/sessiondata.model";
 import faceVerificationRoutes from './routes/faceverification.routes'
 import session from 'express-session'
+import notificationRoutes from './routes/notification.routes'
 
 const allowedOrigins = new Set([
   "http://localhost:3000",
@@ -78,6 +79,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/data', adminDataRoutes);
 app.use('/api/users', faceVerificationRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use(errorHandler);
 
 export default app

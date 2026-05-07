@@ -4,6 +4,8 @@ import { SimpleGig } from "../models/simplegig.model";
 import mongoose from "mongoose";
 import { SimpleOrderMessage } from "../models/simpleordermessage.model";
 import { access } from "fs";
+import { Notification } from "../models/notification.model";
+import { sendNotification } from "../lib/socket";
 
 // Create new simple order
 export const createSimpleOrder = async (
@@ -77,6 +79,20 @@ export const createSimpleOrder = async (
     ]);
 
     await SimpleGig.findByIdAndUpdate(gigId, { $inc: { totalOrders: 1 } });
+
+    try {
+      const notification = new Notification({
+        type: 'order_placed',
+        recipient: gig.seller._id,
+        title: 'New Order Received! 🎉',
+        body: `You received a new order for ${gig.title}`,
+        link: '/seller-dashboard'
+      });
+      await notification.save();
+      sendNotification(gig.seller._id.toString(), notification);
+    } catch (notifErr) {
+      console.error('Failed to send notification:', notifErr);
+    }
 
     res.status(201).json({
       message: "Order created successfully",
@@ -276,7 +292,7 @@ export const updateSimpleOrderStatus = async (
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const order = await SimpleOrder.findById(orderId);
+    const order = await SimpleOrder.findById(orderId).populate('gig', 'title');
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
@@ -323,6 +339,58 @@ export const updateSimpleOrderStatus = async (
     order.status = status;
     order.timeline = timeline;
     await order.save();
+
+    try {
+      let title = '';
+      let body = '';
+      let recipientId = order.buyer.toString();
+      let notifType: any = 'order_status';
+
+      if (status === 'active') {
+        title = 'Order Started! 🚀';
+        body = `The seller has started working on your order for ${(order as any).gig?.title || 'a gig'}.`;
+      } else if (status === 'delivered') {
+        title = 'Order Delivered! 📦';
+        body = `Your order for ${(order as any).gig?.title || 'a gig'} has been delivered. Please review it.`;
+        notifType = 'order_delivered';
+      } else if (status === 'completed') {
+        title = 'Order Completed ✅';
+        body = `Your order for ${(order as any).gig?.title || 'a gig'} was marked as completed.`;
+        notifType = 'order_completed';
+      } else if (status === 'in_revision') {
+        title = 'Revision Requested 🔄';
+        body = `A revision was requested for ${(order as any).gig?.title || 'a gig'}.`;
+        recipientId = order.seller.toString();
+      } else if (status === 'cancelled') {
+        title = 'Order Cancelled ❌';
+        body = `The order for ${(order as any).gig?.title || 'a gig'} has been cancelled.`;
+        // Send to whichever party didn't make the request, or both. For simplicity, send to both.
+        // We'll create one for buyer and one for seller.
+      }
+
+      if (title && status !== 'cancelled') {
+        const notification = new Notification({
+          type: notifType,
+          recipient: recipientId,
+          title,
+          body,
+          link: recipientId === order.buyer.toString() ? '/orders-to-buy' : '/seller-dashboard'
+        });
+        await notification.save();
+        sendNotification(recipientId, notification);
+      } else if (status === 'cancelled') {
+        // Send to buyer
+        const notifBuyer = new Notification({ type: 'order_status', recipient: order.buyer, title, body, link: '/orders-to-buy' });
+        await notifBuyer.save();
+        sendNotification(order.buyer.toString(), notifBuyer);
+        // Send to seller
+        const notifSeller = new Notification({ type: 'order_status', recipient: order.seller, title, body, link: '/seller-dashboard' });
+        await notifSeller.save();
+        sendNotification(order.seller.toString(), notifSeller);
+      }
+    } catch (notifErr) {
+      console.error('Failed to send status notification:', notifErr);
+    }
 
     res.status(200).json({
       message: `Order status updated to ${status}`,
