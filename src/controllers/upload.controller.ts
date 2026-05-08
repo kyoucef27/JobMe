@@ -26,6 +26,14 @@ export const upload = multer({
   },
 });
 
+// For deliverables: accept any file type (images, PDFs, ZIPs, docs, etc.)
+export const uploadAny = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 25 * 1024 * 1024, // 25MB
+  },
+});
+
 export const uploadImage = async (
   req: Request,
   res: Response,

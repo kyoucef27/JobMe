@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { SimpleOrder } from "../models/simpleorder.model";
+import { Order } from "../models/order.model";
 import { Message } from "../models/message.model";
 import { User } from "../models/user.model";
 import mongoose from "mongoose";
@@ -15,17 +16,33 @@ export interface SellerLevel {
 }
 
 export async function computeSellerLevel(userId: string): Promise<SellerLevel> {
-  const completedOrders = await SimpleOrder.countDocuments({
-    seller: userId,
-    status: "completed",
-  });
+  const [simpleCompleted, regularCompleted] = await Promise.all([
+    SimpleOrder.countDocuments({ seller: userId, status: "completed" }),
+    Order.countDocuments({ seller: userId, status: "completed" }),
+  ]);
+  const completedOrders = simpleCompleted + regularCompleted;
 
   // Review aggregation for avg rating
-  const reviewAgg = await SimpleOrder.aggregate([
-    { $match: { seller: new mongoose.Types.ObjectId(userId), status: "completed", "review.rating": { $exists: true } } },
-    { $group: { _id: null, avg: { $avg: "$review.rating" }, count: { $sum: 1 } } },
+  const [simpleAgg, regularAgg] = await Promise.all([
+    SimpleOrder.aggregate([
+      { $match: { seller: new mongoose.Types.ObjectId(userId), status: "completed", "review.rating": { $exists: true } } },
+      { $group: { _id: null, avg: { $avg: "$review.rating" }, count: { $sum: 1 } } },
+    ]),
+    Order.aggregate([
+      { $match: { seller: new mongoose.Types.ObjectId(userId), status: "completed", "review.rating": { $exists: true } } },
+      { $group: { _id: null, avg: { $avg: "$review.rating" }, count: { $sum: 1 } } },
+    ]),
   ]);
-  const avgRating: number = reviewAgg[0]?.avg ?? 5;
+
+  const simpleAvg = simpleAgg[0]?.avg ?? 5;
+  const simpleCount = simpleAgg[0]?.count ?? 0;
+  const regularAvg = regularAgg[0]?.avg ?? 5;
+  const regularCount = regularAgg[0]?.count ?? 0;
+
+  const totalReviews = simpleCount + regularCount;
+  const avgRating = totalReviews > 0 
+    ? (simpleAvg * simpleCount + regularAvg * regularCount) / totalReviews 
+    : 5;
 
   // Thresholds
   const LEVEL_1_ORDERS = 10;
@@ -56,13 +73,23 @@ export const GetSellerDashboard = async (req: Request | any, res: Response): Pro
     const userId = req.user.id;
 
     // 1. Fetch active orders (populate buyer info)
-    const activeOrders = await SimpleOrder.find({
-      seller: userId,
-      status: { $in: ["pending", "active", "in_revision", "delivered"] },
-    })
-      .populate("buyer", "name pfp")
-      .sort({ createdAt: -1 })
-      .limit(5);
+    const [simpleActive, regularActive] = await Promise.all([
+      SimpleOrder.find({
+        seller: userId,
+        status: { $in: ["pending", "active", "in_revision", "delivered"] },
+      }).populate("buyer", "name pfp").sort({ createdAt: -1 }).limit(5),
+      Order.find({
+        seller: userId,
+        status: { $in: ["pending", "active", "in_revision", "delivered"] },
+      }).populate("buyer", "name pfp").sort({ createdAt: -1 }).limit(5),
+    ]);
+
+    const activeOrders = [...simpleActive, ...regularActive.map(o => ({
+      ...o.toObject(),
+      price: (o as any).totalAmount ?? (o as any).price
+    }))].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ).slice(0, 5);
 
     // 2. Fetch recent messages
     const recentMessages = await Message.find({ to: userId })
@@ -84,7 +111,11 @@ export const GetSellerDashboard = async (req: Request | any, res: Response): Pro
     );
 
     // 3. Calculate Performance Metrics
-    const allOrders = await SimpleOrder.find({ seller: userId });
+    const [simpleAll, regularAll] = await Promise.all([
+      SimpleOrder.find({ seller: userId }),
+      Order.find({ seller: userId }),
+    ]);
+    const allOrders = [...simpleAll, ...regularAll];
 
     let totalEarnings = 0;
     let completedOrdersCount = 0;
@@ -94,7 +125,7 @@ export const GetSellerDashboard = async (req: Request | any, res: Response): Pro
 
     allOrders.forEach((order) => {
       if (order.status === "completed") {
-        totalEarnings += order.price;
+        totalEarnings += (order as any).totalAmount ?? order.price;
         completedOrdersCount++;
         if (order.review && order.review.rating) {
           totalRating += order.review.rating;
@@ -173,19 +204,22 @@ export const GetEarningsData = async (req: Request | any, res: Response): Promis
     const userId = req.user.id;
 
     // Fetch all completed orders for this seller
-    const completedOrders = await SimpleOrder.find({
-      seller: userId,
-      status: "completed",
-    })
-      .populate("buyer", "name pfp")
-      .sort({ createdAt: -1 });
+    const [simpleCompleted, regularCompleted] = await Promise.all([
+      SimpleOrder.find({ seller: userId, status: "completed" }).populate("buyer", "name pfp").sort({ createdAt: -1 }),
+      Order.find({ seller: userId, status: "completed" }).populate("buyer", "name pfp").sort({ createdAt: -1 }),
+    ]);
+
+    const completedOrders = [...simpleCompleted, ...regularCompleted].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     let netIncome = 0;
     let completedOnTime = 0;
 
     // Process transactions
     const transactions = completedOrders.map(order => {
-      netIncome += order.price;
+      const price = (order as any).totalAmount ?? order.price;
+      netIncome += price;
 
       // Check if delivered on time (actualDelivery <= expectedDelivery)
       const deliveredOnTime =
@@ -199,7 +233,7 @@ export const GetEarningsData = async (req: Request | any, res: Response): Promis
         id: order._id,
         date: order.timeline?.completed || order.updatedAt,
         buyer: order.buyer,
-        amount: order.price,
+        amount: (order as any).totalAmount ?? order.price,
         currency: "DA",
         status: "cleared",
       };

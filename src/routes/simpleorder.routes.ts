@@ -14,7 +14,7 @@ import {
   getSimpleOrderByTwoUsers
 } from "../controllers/simpleorder.controller";
 import { protectRoute } from "../middleware/auth.middelware";
-import { upload } from '../controllers/upload.controller';
+import { upload, uploadAny } from '../controllers/upload.controller';
 
 const router = Router();
 
@@ -36,7 +36,7 @@ router.patch("/:orderId/status", updateSimpleOrderStatus); // Update simple orde
 router.delete("/:orderId/cancel", cancelSimpleOrder); // Cancel simple order
 
 // Order interactions
-router.post("/:orderId/deliverables", upload.array("files", 10), addSimpleDeliverable); // Add deliverable
+router.post("/:orderId/deliverables", uploadAny.array("files", 5), addSimpleDeliverable); // Add deliverable
 router.post("/:orderId/revisions", requestSimpleRevision); // Request revision
 router.post("/:orderId/review", addSimpleReview); // Add review
 

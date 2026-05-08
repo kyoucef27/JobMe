@@ -17,6 +17,8 @@ export interface IMessage extends Document {
   content: string;
   type: MessageType;
   offer?: ICustomOffer;
+  gigId?: string;
+  orderId?: string;
   createdAt: Date;
   read: boolean;
 }
@@ -36,6 +38,8 @@ const messageSchema = new Schema<IMessage>(
       revisions:    { type: Number },
       status:       { type: String, enum: ["pending", "accepted", "rejected", "expired"], default: "pending" },
     },
+    gigId:   { type: String, default: null },
+    orderId: { type: String, default: null },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

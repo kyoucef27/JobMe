@@ -5,6 +5,7 @@ export interface IConversation extends Document {
   user2Id: string;        // second participant
   initiatorId: string;    // who opened the chat (buyer context)
   orderId?: string;       // if set, this is an order-scoped conversation
+  gigId?: string;         // if set, this conversation is scoped to a specific gig
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,14 +16,15 @@ const conversationSchema = new Schema<IConversation>(
     user2Id:     { type: String, required: true },
     initiatorId: { type: String, required: true },
     orderId:     { type: String, default: null },
+    gigId:       { type: String, default: null },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-// A general conversation (no orderId) must be unique per pair.
+// A general conversation (no orderId) must be unique per pair + gig.
 // An order conversation is always unique per orderId.
 conversationSchema.index(
-  { user1Id: 1, user2Id: 1, orderId: 1 },
+  { user1Id: 1, user2Id: 1, gigId: 1, orderId: 1 },
   { unique: true, sparse: true }
 );
 

@@ -5,6 +5,7 @@ import {
   messageRead,
   setConv,
   getConv,
+  getSpecificConv,
   sendCustomOffer,
   acceptCustomOffer,
   rejectCustomOffer,
@@ -21,6 +22,7 @@ router.post("/messageread", messageRead);
 // Conversations
 router.post("/conv", protectRoute, setConv);
 router.get("/conv", getConv);
+router.get("/specific-conv", getSpecificConv);
 
 // Custom offers (all require auth)
 router.post("/offer", protectRoute, sendCustomOffer);

@@ -15,14 +15,23 @@ function normalise(id: string) {
 async function findOrCreateConversation(
   user1Id: string,
   user2Id: string,
-  initiatorId: string
+  initiatorId: string,
+  gigId?: string
 ) {
   // Canonical pair: smaller ID first so queries are index-friendly
   const [a, b] = [user1Id, user2Id].sort();
 
-  let conv = await Conversation.findOne({ user1Id: a, user2Id: b, orderId: null });
+  const query: any = { user1Id: a, user2Id: b, orderId: null };
+  if (gigId) {
+    query.gigId = gigId;
+  } else {
+    // Look for null or missing gigId
+    query.$or = [{ gigId: null }, { gigId: { $exists: false } }];
+  }
+
+  let conv = await Conversation.findOne(query);
   if (!conv) {
-    conv = await Conversation.create({ user1Id: a, user2Id: b, initiatorId });
+    conv = await Conversation.create({ user1Id: a, user2Id: b, initiatorId, gigId: gigId || null });
   }
   return conv;
 }
@@ -35,12 +44,16 @@ export const sendMessage = async (
   next: NextFunction
 ) => {
   try {
-    const { from, to, content } = req.body;
+    const { from, to, content, gigId, orderId } = req.body;
     if (!from || !to || !content) {
       return res.status(400).json({ error: "Missing required fields: from, to, content" });
     }
 
-    const message = await Message.create({ from, to, content, type: "text" });
+    const message = await Message.create({ 
+      from, to, content, type: "text", 
+      gigId: gigId ?? null, 
+      orderId: orderId ?? null 
+    });
 
     const io = getSocketIO();
     const connectedUsers = getConnectedUsers();
@@ -50,6 +63,7 @@ export const sendMessage = async (
         _id: message._id, from: message.from, to: message.to,
         content: message.content, type: message.type,
         createdAt: message.createdAt, read: message.read,
+        gigId: message.gigId, orderId: message.orderId
       });
     }
 
@@ -59,6 +73,7 @@ export const sendMessage = async (
         _id: message._id, from: message.from, to: message.to,
         content: message.content, type: message.type,
         createdAt: message.createdAt, read: message.read,
+        gigId: message.gigId, orderId: message.orderId
       },
     });
   } catch (error) {
@@ -72,17 +87,29 @@ export const getMessages = async (
   next: NextFunction
 ) => {
   try {
-    const { userId1, userId2 } = req.query;
+    const { userId1, userId2, gigId, orderId } = req.query;
     if (!userId1 || !userId2) {
       return res.status(400).json({ error: "Missing required query parameters: userId1, userId2" });
     }
 
-    const messages = await Message.find({
+    const query: any = {
       $or: [
         { from: userId1, to: userId2 },
         { from: userId2, to: userId1 },
       ],
-    }).sort({ createdAt: 1 });
+    };
+
+    if (orderId) {
+      query.orderId = orderId;
+    } else if (gigId) {
+      query.gigId = gigId;
+    } else {
+      // General chat (no gig, no order)
+      query.gigId = null;
+      query.orderId = null;
+    }
+
+    const messages = await Message.find(query).sort({ createdAt: 1 });
 
     res.status(200).json({ messages });
   } catch (error) {
@@ -112,15 +139,34 @@ export const messageRead = async (req: Request, res: Response, next: NextFunctio
 /** Create a general conversation, recording initiator. */
 export const setConv = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { user1Id, user2Id } = req.body;
+    const { user1Id, user2Id, gigId, orderId } = req.body;
     if (!user1Id || !user2Id) {
       return res.status(400).json({ error: "Missing required fields: user1Id, user2Id" });
     }
 
-    // The initiator is always the one calling this endpoint (the person who clicked "Contact Seller")
     const initiatorId = req.user?._id?.toString() || user1Id;
 
-    const conv = await findOrCreateConversation(user1Id, user2Id, initiatorId);
+    const [a, b] = [user1Id, user2Id].sort();
+    const query: any = { user1Id: a, user2Id: b };
+    
+    if (orderId) {
+      query.orderId = orderId;
+    } else if (gigId) {
+      query.gigId = gigId;
+      query.orderId = null;
+    } else {
+      query.gigId = null;
+      query.orderId = null;
+    }
+
+    let conv = await Conversation.findOne(query);
+    if (!conv) {
+      conv = await Conversation.create({ 
+        user1Id: a, user2Id: b, initiatorId, 
+        gigId: gigId || null, 
+        orderId: orderId || null 
+      });
+    }
 
     const isNew = (conv.createdAt?.getTime() ?? 0) > Date.now() - 2000;
     res.status(200).json({
@@ -139,13 +185,44 @@ export const getConv = async (req: Request, res: Response, next: NextFunction) =
       return res.status(400).json({ error: "Missing required query parameter: userId" });
     }
 
-    // Only return general conversations (no orderId)
+    // Return all conversations for this user
     const conversations = await Conversation.find({
       $or: [{ user1Id: userId }, { user2Id: userId }],
-      orderId: null,
-    }).sort({ createdAt: 1 });
+    }).sort({ createdAt: -1 }); // Newest first
 
     return res.status(200).json({ conversations });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSpecificConv = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { userId1, userId2, gigId, orderId } = req.query;
+    if (!userId1 || !userId2) {
+      return res.status(400).json({ error: "Missing required query parameters: userId1, userId2" });
+    }
+
+    const [a, b] = [userId1 as string, userId2 as string].sort();
+    
+    const query: any = { user1Id: a, user2Id: b };
+    if (orderId) {
+      query.orderId = orderId;
+    } else if (gigId) {
+      query.gigId = gigId;
+      query.orderId = null;
+    } else {
+      query.gigId = null;
+      query.orderId = null;
+    }
+
+    const conversation = await Conversation.findOne(query);
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    return res.status(200).json({ conversation });
   } catch (error) {
     next(error);
   }
@@ -162,15 +239,32 @@ export const sendCustomOffer = async (req: Request, res: Response, next: NextFun
     const sellerId = req.user?._id?.toString();
     if (!sellerId) return res.status(401).json({ error: "Authentication required" });
 
-    const { buyerId, title, description, price, deliveryTime, revisions } = req.body;
+    const { buyerId, title, description, price, deliveryTime, revisions, gigId } = req.body;
 
     if (!buyerId || !title || !description || !price || !deliveryTime) {
       return res.status(400).json({ error: "Missing required fields: buyerId, title, description, price, deliveryTime" });
     }
 
-    // Seller is NOT the initiator of the general chat — buyer contacted first.
-    // We still need a general conversation to exist so we can send the offer there.
-    const conv = await findOrCreateConversation(sellerId, buyerId, buyerId);
+    // Find the existing conversation to check who is the initiator
+    const [a, b] = [sellerId, buyerId].sort();
+    
+    const query: any = { user1Id: a, user2Id: b, orderId: null };
+    if (gigId) {
+      query.gigId = gigId;
+    } else {
+      query.$or = [{ gigId: null }, { gigId: { $exists: false } }];
+    }
+
+    const conv = await Conversation.findOne(query);
+    
+    if (!conv) {
+      return res.status(404).json({ error: "Conversation not found. You must have an existing chat to send an offer." });
+    }
+
+    // Guard: Only the non-initiator (seller) can send an offer
+    if (sellerId === conv.initiatorId) {
+      return res.status(403).json({ error: "Only the seller (non-initiator) can send a custom offer in this chat." });
+    }
 
     const content = `📦 Custom Offer: ${title} — ${price} DA / ${deliveryTime} day(s)`;
 

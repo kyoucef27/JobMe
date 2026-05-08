@@ -392,6 +392,17 @@ export const updateSimpleOrderStatus = async (
       console.error('Failed to send status notification:', notifErr);
     }
 
+    await order.populate([
+      { path: 'gig', select: 'title images price category seller' },
+      { path: 'buyer', select: 'name email pfp' },
+      { path: 'seller', select: 'name email pfp' }
+    ]);
+
+    // Ensure accessLevel is set if returned to a seller
+    if (order.seller._id.toString() === userId?.toString()) {
+      (order as any).accessLevel = "seller";
+    }
+
     res.status(200).json({
       message: `Order status updated to ${status}`,
       order: order
@@ -409,11 +420,18 @@ export const addSimpleDeliverable = async (
 ) => {
   try {
     const { orderId } = req.params;
-    const { files, description } = req.body;
     const userId = req.user?._id;
+    const description: string = req.body.description || "";
+    const links: string[] = req.body.links
+      ? (Array.isArray(req.body.links) ? req.body.links : [req.body.links])
+      : [];
 
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
       return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    if (!description.trim()) {
+      return res.status(400).json({ message: "Delivery message is required" });
     }
 
     const order = await SimpleOrder.findById(orderId);
@@ -421,27 +439,86 @@ export const addSimpleDeliverable = async (
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Only seller can add deliverables
+    // Only seller can deliver
     if (order.seller.toString() !== userId?.toString()) {
       return res.status(403).json({ message: "Only seller can add deliverables" });
     }
 
-    if (order.status !== 'active') {
-      return res.status(400).json({ message: "Order must be active to add deliverables" });
+    if (!['active', 'in_revision'].includes(order.status)) {
+      return res.status(400).json({ message: "Order must be active or in revision to deliver" });
     }
 
+    // Upload any attached files to Cloudinary
+    const uploadedUrls: string[] = [];
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      const cloudinary = (await import("../lib/cloudinary")).default;
+      const streamifier = (await import("streamifier")).default;
+
+      const uploadPromises = (req.files as Express.Multer.File[]).map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              {
+                folder: "deliverables",
+                resource_type: "auto", // allows non-image files
+                use_filename: true,
+                unique_filename: true,
+              },
+              (err, result) => {
+                if (err || !result) return reject(err || new Error("Upload failed"));
+                resolve(result.secure_url);
+              }
+            );
+            streamifier.createReadStream(file.buffer).pipe(stream);
+          })
+      );
+
+      const resolved = await Promise.all(uploadPromises);
+      uploadedUrls.push(...resolved);
+    }
+
+    // Combine uploaded file URLs with external links
+    const allLinks = [...uploadedUrls, ...links.filter((l) => l.trim())];
+
     const deliverable = {
-      files: files || [],
+      files: allLinks,
       description,
-      deliveredAt: new Date()
+      deliveredAt: new Date(),
     };
 
     order.deliverables.push(deliverable);
+
+    // Auto-transition to delivered
+    order.status = "delivered";
+    order.timeline = { ...order.timeline, delivered: new Date() };
+
     await order.save();
 
+    // Notify buyer
+    try {
+      const notification = new Notification({
+        type: "order_delivered",
+        recipient: order.buyer,
+        title: "Order Delivered! 📦",
+        body: "Your order has been delivered. Please review it.",
+        link: "/orders-to-buy",
+      });
+      await notification.save();
+      sendNotification(order.buyer.toString(), notification);
+    } catch (notifErr) {
+      console.error("Failed to send delivery notification:", notifErr);
+    }
+
+    await order.populate([
+      { path: "gig", select: "title images price category seller" },
+      { path: "buyer", select: "name email pfp" },
+      { path: "seller", select: "name email pfp" },
+    ]);
+
     res.status(200).json({
-      message: "Deliverable added successfully",
-      deliverable
+      message: "Work delivered successfully",
+      deliverable,
+      order,
     });
   } catch (error) {
     next(error);

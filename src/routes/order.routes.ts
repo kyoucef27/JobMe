@@ -13,7 +13,7 @@ import {
   cancelOrder
 } from "../controllers/order.controller";
 import { protectRoute } from "../middleware/auth.middelware";
-import { upload } from '../controllers/upload.controller';
+import { upload, uploadAny } from '../controllers/upload.controller';
 
 const router = Router();
 
@@ -29,7 +29,7 @@ router.patch("/:orderId/status", updateOrderStatus); // Update order status
 router.delete("/:orderId/cancel", cancelOrder); // Cancel order
 
 // Order interactions
-router.post("/:orderId/deliverables", upload.array("files", 10), addDeliverable); // Add deliverable
+router.post("/:orderId/deliverables", uploadAny.array("files", 5), addDeliverable); // Add deliverable
 router.post("/:orderId/revisions", requestRevision); // Request revision
 router.post("/:orderId/messages", upload.array("attachments", 5), addMessage); // Add message
 router.get("/:orderId/messages", getOrderMessages); // Get order messages
