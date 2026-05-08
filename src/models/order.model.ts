@@ -52,6 +52,7 @@ export interface IOrder extends Document {
   expectedDelivery: Date;
   actualDelivery?: Date;
   cancellationReason?: string;
+  reported?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -238,7 +239,7 @@ orderSchema.index({ expectedDelivery: 1 });
 orderSchema.index({ createdAt: -1 });
 
 // Middleware to calculate total amount before saving
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   if (this.isModified('price') || this.isModified('extras')) {
     const extrasTotal = this.extras.reduce((sum, extra) => sum + extra.price, 0);
     this.totalAmount = this.price + extrasTotal;
@@ -247,7 +248,7 @@ orderSchema.pre('save', function(next) {
 });
 
 // Middleware to set expected delivery date
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   if (this.isNew && !this.expectedDelivery) {
     const deliveryDate = new Date();
     deliveryDate.setDate(deliveryDate.getDate() + this.deliveryTime);

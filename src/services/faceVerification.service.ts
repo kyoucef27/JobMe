@@ -20,6 +20,7 @@ export const verifyFaceWithInsightService = async (
   idImage: Express.Multer.File,
   selfies: Express.Multer.File[]
 ): Promise<FaceVerificationResult> => {
+  console.log("Verifying face with insight service");
   if (selfies.length < 2 || selfies.length > 5) {
     throw new Error(`Face verification requires 2-5 selfies, received ${selfies.length}`);
   }

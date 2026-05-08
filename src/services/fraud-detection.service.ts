@@ -52,11 +52,10 @@ Order Details:
 - Buyer Cancelled Orders: ${orderData.buyerHistory?.cancelledOrders || 0}
 - Buyer Average Order Value: $${orderData.buyerHistory?.averageOrderValue || 0}
 - Requirements Provided: ${orderData.orderDetails.requirements?.length || 0}
-${
-  orderData.orderDetails.unusualPatterns?.length
-    ? `- Unusual Patterns: ${orderData.orderDetails.unusualPatterns.join(", ")}`
-    : ""
-}
+${orderData.orderDetails.unusualPatterns?.length
+      ? `- Unusual Patterns: ${orderData.orderDetails.unusualPatterns.join(", ")}`
+      : ""
+    }
 
 Analyze for:
 1. Unusual price patterns (too high/low compared to history)
@@ -127,7 +126,12 @@ Return ONLY a JSON response in this exact format (no markdown, no extra text):
 
     // Auto-flag user if risk score is high
     if (result.riskScore >= 70) {
-      await autoFlagUser(orderData.userId, result, orderData.triggeringEvent);
+      //await autoFlagUser(orderData.userId, result, orderData.triggeringEvent);
+      await autoFlagUser(orderData.userId, result, {
+        type: "other", // Change the type to "other" to satisfy the DB
+        details: "Order blocked by suspicious patterns",
+        timestamp: new Date()
+      });
     }
 
     return result;
@@ -223,7 +227,7 @@ async function autoFlagUser(
           .length,
         averageOrderValue:
           totalOrders.reduce((sum, o) => sum + o.price, 0) /
-            totalOrders.length || 0,
+          totalOrders.length || 0,
         totalSpent: totalOrders.reduce((sum, o) => sum + o.price, 0),
         totalEarned: 0,
         verificationStatus: {
@@ -252,8 +256,8 @@ async function autoFlagUser(
           analysisResult.riskScore >= 85
             ? "immediate_suspension"
             : analysisResult.riskScore >= 70
-            ? "monitor_closely"
-            : "manual_review",
+              ? "monitor_closely"
+              : "manual_review",
       },
     });
 
@@ -314,7 +318,6 @@ export async function analyzeSellerForFraud(
 ): Promise<any> {
   try {
     const Report = (await import("../models/report.model")).default;
-    
     // Get all reports against this seller
     const allReports = await Report.find({
       reportedUser: sellerId,
@@ -405,7 +408,6 @@ export async function analyzeSellerForFraud(
     const cancelledOrders = sellerOrders.filter(
       (o) => o.status === "cancelled"
     ).length;
-    
     if (sellerOrders.length > 0) {
       const completionRate = completedOrders / sellerOrders.length;
       if (completionRate < 0.5) {
@@ -469,7 +471,7 @@ export async function analyzeSellerForFraud(
         completedOrders,
         averageOrderValue:
           sellerOrders.reduce((sum, o) => sum + o.price, 0) /
-            sellerOrders.length || 0,
+          sellerOrders.length || 0,
         totalSpent: 0,
         totalEarned: sellerOrders.reduce((sum, o) => sum + o.price, 0),
         verificationStatus: {
@@ -505,8 +507,8 @@ export async function analyzeSellerForFraud(
           fraudScore >= 80
             ? "immediate_suspension"
             : fraudScore >= 65
-            ? "monitor_closely"
-            : "manual_review",
+              ? "monitor_closely"
+              : "manual_review",
       },
     });
 

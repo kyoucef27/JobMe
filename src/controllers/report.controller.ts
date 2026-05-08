@@ -64,7 +64,6 @@ const calculateCredibilityScore = (reporterData: {
 export const submitReport = async (req: Request, res: Response) => {
   try {
     const reporterId = req.user?._id;
-    
     // Parse body data (could be JSON or multipart)
     let reportData;
     if (req.body.data) {
@@ -73,7 +72,6 @@ export const submitReport = async (req: Request, res: Response) => {
     } else {
       reportData = req.body;
     }
-    
     const {
       reportedUserId,
       orderId,
@@ -112,7 +110,6 @@ export const submitReport = async (req: Request, res: Response) => {
             );
             streamifier.createReadStream(file.buffer).pipe(uploadStream);
           });
-          
           screenshotUrls.push(uploadResult.secure_url);
         } catch (uploadError) {
           console.error('Error uploading screenshot:', uploadError);
@@ -245,8 +242,8 @@ export const submitReport = async (req: Request, res: Response) => {
         severity === "critical" || similarReports >= 3
           ? "urgent"
           : severity === "high" || similarReports >= 2
-          ? "high"
-          : "medium",
+            ? "high"
+            : "medium",
       impact: {
         similarReports,
       },
@@ -270,6 +267,10 @@ export const submitReport = async (req: Request, res: Response) => {
       });
     }
 
+    // Add reported: true flag to order for quick access
+    order.reported = true;
+    await order.save();
+
     res.status(201).json({
       message: "Report submitted successfully",
       report,
@@ -282,6 +283,30 @@ export const submitReport = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get report by orderId
+export const getReportDetailsByOrderId = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const report = await Report.findOne({ order: id })
+      .populate("reporter", "name email username createdAt verifiedEmail")
+      .populate("reportedUser", "name email username createdAt")
+      .populate("order")
+      .populate("review.reviewedBy", "name email")
+      .populate("impact.fraudCaseCreated");
+
+    if (!report) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+
+    res.json({ report });
+  } catch (error: any) {
+    console.error("Error fetching report details:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 // Get all reports (Admin)
 export const getAllReports = async (req: Request, res: Response) => {
@@ -390,7 +415,6 @@ export const reviewReport = async (req: Request, res: Response) => {
     // Update status
     if (decision === "valid") {
       report.status = "accepted";
-      
       // Flag seller if action was taken
       if (actionTaken?.type === "seller_flagged" || actionTaken?.type === "seller_suspended") {
         const fraudCase = await analyzeSellerForFraud(report.reportedUser, {
@@ -400,7 +424,6 @@ export const reviewReport = async (req: Request, res: Response) => {
           credibilityScore: report.reporterCredibility.credibilityScore,
           similarReports: report.impact.similarReports || 0,
         });
-        
         if (fraudCase) {
           report.impact.fraudCaseCreated = fraudCase._id as any;
         }
