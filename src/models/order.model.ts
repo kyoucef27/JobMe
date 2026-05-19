@@ -224,7 +224,11 @@ const orderSchema = new Schema<IOrder>({
   cancellationReason: {
     type: String,
     maxlength: 300
-  }
+  },
+  reported: {
+    type: Boolean,
+    default: false
+  },
 }, {
   timestamps: true
 });

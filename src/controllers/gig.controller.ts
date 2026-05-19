@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { Gig, IGig } from "../models/gig.model";
 import { User } from "../models/user.model";
 import mongoose from "mongoose";
+import { logInteraction } from "../services/recommendation.service";
 
 // Create a new gig
 export const createGig = async (
@@ -83,11 +84,14 @@ export const getAllGigs = async (
     if (category) filter.category = category;
     if (subcategory) filter.subcategory = subcategory;
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search as string, 'i')] } }
-      ];
+      const searchTerms = (search as string).split(' ').filter(term => term.trim().length > 0);
+      if (searchTerms.length > 0) {
+        filter.$or = searchTerms.flatMap(term => [
+          { title: { $regex: term, $options: 'i' } },
+          { description: { $regex: term, $options: 'i' } },
+          { tags: { $in: [new RegExp(term, 'i')] } }
+        ]);
+      }
     }
 
     // Price filter (using basic package price)
@@ -118,6 +122,15 @@ export const getAllGigs = async (
     ]);
 
     const totalPages = Math.ceil(totalCount / limitNum);
+
+    // ── AI Interaction Logging (fire-and-forget) ──────────────────────────
+    if (search && req.user?._id) {
+      void logInteraction({
+        buyerId: req.user._id.toString(),
+        type: "search",
+        query: search as string,
+      }).catch(() => {});
+    }
 
     res.status(200).json({
       gigs,
@@ -152,6 +165,17 @@ export const getGigById = async (
 
     if (!gig) {
       return res.status(404).json({ message: "Gig not found" });
+    }
+
+    // ── AI Interaction Logging (fire-and-forget) ──────────────────────────
+    if (req.user?._id) {
+      void logInteraction({
+        buyerId: req.user._id.toString(),
+        type: "view",
+        gigId: gigId,
+        category: gig.category,
+        tags: gig.tags,
+      }).catch(() => {});
     }
 
     res.status(200).json({ gig });

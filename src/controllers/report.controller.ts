@@ -129,31 +129,42 @@ export const submitReport = async (req: Request, res: Response) => {
       additionalInfo: evidence?.additionalInfo || {},
     };
 
-    // Verify order exists and reporter is the buyer
-    const order = await Order.findById(orderId) || await SimpleOrder.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
+    // Verify reported user exists
+    const reportedUser = await User.findById(reportedUserId);
+    if (!reportedUser) {
+      return res.status(404).json({ error: "Reported user not found" });
     }
 
-    if (order.buyer.toString() !== reporterId.toString()) {
-      return res.status(403).json({
-        error: "You can only report orders you purchased",
-      });
+    // Verify order exists and reporter is the buyer (if orderId provided)
+    let order = null;
+    if (orderId) {
+      order = await Order.findById(orderId) || await SimpleOrder.findById(orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      if (order.buyer.toString() !== reporterId.toString()) {
+        return res.status(403).json({
+          error: "You can only report orders you purchased",
+        });
+      }
+
+      if (order.seller.toString() !== reportedUserId) {
+        return res.status(400).json({
+          error: "Reported user must be the seller of this order",
+        });
+      }
     }
 
-    if (order.seller.toString() !== reportedUserId) {
-      return res.status(400).json({
-        error: "Reported user must be the seller of this order",
-      });
-    }
-
-    // Check if already reported this order
+    // Check if already reported this order or user for same category recently
     const existingReport = await Report.findOne({
       reporter: reporterId,
-      order: orderId,
+      reportedUser: reportedUserId,
+      ...(orderId ? { order: orderId } : { category }),
+      status: { $in: ["pending", "under_review", "accepted"] },
     });
 
-    if (existingReport) {
+    if (existingReport && orderId) {
       return res.status(400).json({
         error: "You have already reported this order",
         existingReport: existingReport._id,
@@ -267,9 +278,11 @@ export const submitReport = async (req: Request, res: Response) => {
       });
     }
 
-    // Add reported: true flag to order for quick access
-    order.reported = true;
-    await order.save();
+    // Add reported: true flag to order for quick access if it exists
+    if (order) {
+      order.reported = true;
+      await order.save();
+    }
 
     res.status(201).json({
       message: "Report submitted successfully",

@@ -46,6 +46,7 @@ export interface ISimpleOrder extends Document {
   expectedDelivery: Date;
   actualDelivery?: Date;
   cancellationReason?: string;
+  reported?: boolean;
   createdAt: Date;
   updatedAt: Date;
   accessLevel?: "buyer" | "seller"; // virtual field, not stored in DB
@@ -192,6 +193,10 @@ const simpleOrderSchema = new Schema<ISimpleOrder>({
   cancellationReason: {
     type: String,
     maxlength: 300
+  },
+  reported: {
+    type: Boolean,
+    default: false
   },
   accessLevel: {
     type: String,

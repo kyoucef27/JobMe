@@ -83,7 +83,7 @@ const ReportSchema = new Schema<IReport>(
     order: {
       type: Schema.Types.ObjectId,
       ref: "Order",
-      required: true,
+      required: false,
       index: true,
     },
     category: {

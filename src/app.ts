@@ -25,6 +25,7 @@ import { PendingUser } from "./models/sessiondata.model";
 import faceVerificationRoutes from './routes/faceverification.routes'
 import session from 'express-session'
 import notificationRoutes from './routes/notification.routes'
+import recommendationRoutes from './routes/recommendation.routes'
 
 const allowedOrigins = new Set([
   "http://localhost:3000",
@@ -80,6 +81,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin/data', adminDataRoutes);
 app.use('/api/users', faceVerificationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 app.use(errorHandler);
 
 export default app

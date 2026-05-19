@@ -5,6 +5,8 @@ import { generateToken } from "../lib/utils";
 import cloudinary from "../lib/cloudinary";
 import { userimg } from "../models/user.model";
 import { sendOTP } from "../lib/otp";
+import { logInteraction } from "../services/recommendation.service";
+import { Gig } from "../models/gig.model";
 export const SignIn = async (
   req: Request,
   res: Response,
@@ -359,6 +361,19 @@ export const SaveGig = async (req: any, res: any) => {
     ).select("-password");
 
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    // ── AI Interaction Logging (fire-and-forget) ──────────────────────────
+    Gig.findById(gigId).select("category tags").lean().then(gig => {
+      if (gig) {
+        logInteraction({
+          buyerId: userId.toString(),
+          type: "save",
+          gigId: gigId,
+          category: gig.category,
+          tags: gig.tags as string[],
+        }).catch(() => {});
+      }
+    }).catch(() => {});
 
     return res.status(200).json({ message: "Gig saved successfully", savedGigs: user.savedGigs });
   } catch (error) {

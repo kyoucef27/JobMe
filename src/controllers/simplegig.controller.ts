@@ -90,11 +90,14 @@ export const getAllSimpleGigs = async (
 
     if (category) filter.category = category;
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search as string, 'i')] } }
-      ];
+      const searchTerms = (search as string).split(' ').filter(term => term.trim().length > 0);
+      if (searchTerms.length > 0) {
+        filter.$or = searchTerms.flatMap(term => [
+          { title: { $regex: term, $options: 'i' } },
+          { description: { $regex: term, $options: 'i' } },
+          { tags: { $in: [new RegExp(term, 'i')] } }
+        ]);
+      }
     }
 
     // Price filter

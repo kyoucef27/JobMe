@@ -7,6 +7,7 @@ import { Notification } from "../models/notification.model";
 import { sendNotification } from "../lib/socket";
 import { detectSuspiciousPatterns, analyzeOrderForFraud } from "../services/fraud-detection.service";
 import { User } from "../models/user.model";
+import { logInteraction } from "../services/recommendation.service";
 
 // Create new order
 export const createOrder = async (
@@ -150,6 +151,15 @@ export const createOrder = async (
 
     // Update gig total orders count
     await Gig.findByIdAndUpdate(gigId, { $inc: { totalOrders: 1 } });
+
+    // ── AI Interaction Logging (fire-and-forget) ──────────────────────────
+    void logInteraction({
+      buyerId: buyerId.toString(),
+      type: "order",
+      gigId: gigId.toString(),
+      category: gig.category,
+      tags: gig.tags,
+    }).catch(() => {});
 
     res.status(201).json({
       message: "Order created successfully",
